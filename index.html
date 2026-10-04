@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brayton cycle explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F5F7; --panel:#FFFFFF; --ink:#16263A; --muted:#5A6978;
+  --grid:#E1E7EC; --line:#C3CED8; --cold:#2F6FB0; --warm:#E8A33B; --hot:#D9481F;
+  --bad:#B4321A;
+  --sans:"Barlow", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --cond:"Barlow Semi Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1620; --panel:#15202C; --ink:#E4EBF2; --muted:#93A3B3;
+    --grid:#223040; --line:#344759; --cold:#5B9BE0; --bad:#FF7A5C;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1620; --panel:#15202C; --ink:#E4EBF2; --muted:#93A3B3;
+  --grid:#223040; --line:#344759; --cold:#5B9BE0; --bad:#FF7A5C;
+}
+:root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); height:100%; }
+*,*::before,*::after{ box-sizing:inherit; }
+body{ margin:0; height:100%; overflow:hidden; background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.45; }
+
+.app{ display:grid; grid-template-columns:clamp(172px, 30vw, 300px) minmax(0,1fr); height:100%; }
+aside{ overflow-y:auto; background:var(--panel); border-right:1px solid var(--line); padding:0.9rem 0.9rem 1.2rem; }
+main{ overflow-y:auto; padding:0.9rem clamp(0.6rem,2.5vw,1.6rem) 2rem; display:flex; flex-direction:column; gap:1rem; min-width:0; }
+h1{ font-family:var(--cond); font-weight:600; font-size:1.35rem; line-height:1.15; margin:0 0 0.2rem; }
+.fluid{ color:var(--muted); font-size:0.82rem; margin:0 0 0.9rem; padding-bottom:0.7rem; border-bottom:1px solid var(--grid); }
+
+.field{ margin-bottom:0.85rem; }
+.field-head{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:0.15rem 0.5rem; }
+label{ font-weight:500; font-size:0.9rem; line-height:1.25; }
+.num{ display:inline-flex; align-items:center; gap:0.25rem; margin-left:auto; }
+.num input{ width:4.6rem; font:500 0.95rem var(--cond); text-align:right; padding:0.15rem 0.3rem; border:1px solid var(--line); border-radius:5px; background:var(--paper); color:var(--ink); }
+.unit{ color:var(--muted); font-size:0.8rem; min-width:1.6rem; }
+input[type=range]{ width:100%; margin:0.35rem 0 0; accent-color:var(--cold); }
+.hint{ color:var(--muted); font-size:0.78rem; line-height:1.3; min-height:1em; }
+:focus-visible{ outline:2px solid var(--cold); outline-offset:2px; }
+
+.results{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.results > div{ padding:0.6rem 0.8rem; box-shadow:-1px 0 0 var(--grid), 0 -1px 0 var(--grid); }
+.rlabel{ font-size:0.82rem; color:var(--muted); }
+.rval{ font:600 1.55rem/1.15 var(--cond); font-variant-numeric:tabular-nums; }
+.rsub{ font-size:0.76rem; color:var(--muted); }
+
+section.chart{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:0.8rem 0.9rem 0.7rem; }
+section.chart h2{ font-family:var(--cond); font-weight:600; font-size:1.15rem; margin:0; }
+section.chart > p{ margin:0.15rem 0 0.45rem; color:var(--muted); font-size:0.85rem; max-width:80ch; }
+svg.plot{ display:block; width:100%; height:auto; }
+svg .grid{ stroke:var(--grid); stroke-width:1; }
+svg .frame{ fill:none; stroke:var(--line); }
+svg text{ font-family:var(--sans); fill:var(--muted); font-size:12px; }
+svg .axis{ fill:var(--ink); font-size:13px; font-weight:500; }
+svg .lbl{ fill:var(--ink); font:600 14px var(--cond); }
+svg .note{ fill:var(--bad); font-size:14px; font-weight:500; }
+.idealbtn{ display:flex; align-items:center; justify-content:center; gap:0.5rem; width:100%; font:600 0.95rem var(--sans); color:var(--ink); background:var(--paper); border:1.5px solid var(--cold); border-radius:8px; padding:0.45rem 0.6rem; cursor:pointer; }
+.idealbtn .dot{ width:0.75rem; height:0.75rem; border-radius:50%; border:2px solid var(--cold); }
+.idealbtn[aria-pressed="true"]{ background:var(--cold); color:#fff; }
+.idealbtn[aria-pressed="true"] .dot{ background:#fff; border-color:#fff; }
+.idealhint{ margin:0.3rem 0 0.9rem; }
+.field.locked{ opacity:0.42; }
+.field.locked input{ cursor:not-allowed; }
+.eq .eqn{ float:right; margin-left:1rem; color:var(--muted); font-family:var(--sans); font-size:0.8rem; font-style:normal; }
+table.coef{ min-width:0; font-size:0.82rem; margin:0.4rem 0; }
+table.coef td, table.coef th{ text-align:right !important; padding:0.15rem 0.5rem; }
+.tnote{ font-size:0.78rem; color:var(--muted); margin:0.4rem 0 0; max-width:90ch; }
+.dlg-body h4{ font-size:0.95rem; margin:0.9rem 0 0.2rem; }
+.axisctl{ display:flex; flex-wrap:wrap; align-items:center; gap:0.3rem 0.7rem; margin:0.2rem 0 0.3rem 60px; font-size:0.85rem; }
+.axisctl label{ font-size:0.85rem; color:var(--muted); }
+.axisctl input[type=range]{ flex:1; min-width:120px; margin:0; }
+.keybar{ display:flex; align-items:center; gap:0.6rem; font-size:0.8rem; color:var(--muted); margin-top:0.3rem; }
+.keybar span.bar{ flex:1; max-width:260px; height:8px; border-radius:4px; background:linear-gradient(90deg,var(--cold),var(--warm),var(--hot)); }
+.legend{ display:flex; flex-wrap:wrap; gap:0.3rem 1rem; font-size:0.8rem; color:var(--muted); margin-top:0.4rem; }
+.legend i{ display:inline-block; width:18px; height:0; border-top:3px solid; vertical-align:middle; margin-right:0.35rem; }
+.msg{ color:var(--bad); font-weight:500; font-size:0.9rem; margin:0.4rem 0 0; }
+.tablewrap{ overflow-x:auto; margin-top:0.6rem; }
+table{ border-collapse:collapse; font-size:0.82rem; min-width:600px; width:100%; font-variant-numeric:tabular-nums; }
+th,td{ padding:0.25rem 0.55rem; text-align:right; border-bottom:1px solid var(--grid); }
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){ text-align:left; }
+table.perf{ min-width:320px; }
+table.perf td:nth-child(2){ text-align:right; font-weight:600; }
+table.perf td:nth-child(3){ text-align:left; color:var(--muted); }
+table.perf tr.grp td{ padding-top:0.7rem; font:600 0.95rem var(--cond); color:var(--ink); border-bottom:1px solid var(--line); }
+th{ color:var(--muted); font-weight:500; }
+details{ font-size:0.8rem; color:var(--muted); border-top:1px solid var(--grid); padding-top:0.6rem; margin-top:0.3rem; }
+summary{ cursor:pointer; color:var(--ink); font-weight:500; }
+details ul{ padding-left:1rem; margin:0.4rem 0 0; }
+.infobtn{ display:inline-flex; align-items:center; gap:0.45rem; font:500 0.88rem var(--sans); color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:0.3rem 0.8rem 0.3rem 0.35rem; margin:0 0 0.9rem; cursor:pointer; }
+.infobtn span{ display:inline-grid; place-items:center; width:1.3rem; height:1.3rem; border-radius:50%; background:var(--cold); color:#fff; font:600 0.8rem Georgia, serif; font-style:italic; }
+.infobtn:hover{ border-color:var(--cold); }
+dialog#info{ width:min(760px, 94vw); max-height:88%; padding:0; border:1px solid var(--line); border-radius:12px; background:var(--panel); color:var(--ink); }
+dialog#info::backdrop{ background:rgba(10,20,30,0.45); }
+.dlg-head{ position:sticky; top:0; display:flex; justify-content:space-between; align-items:center; padding:0.8rem 1.2rem; background:var(--panel); border-bottom:1px solid var(--grid); }
+.dlg-head h2{ font-family:var(--cond); font-weight:600; font-size:1.3rem; margin:0; }
+.close{ font-size:1.6rem; line-height:1; background:none; border:0; color:var(--muted); cursor:pointer; padding:0.1rem 0.4rem; }
+.dlg-body{ padding:0.4rem 1.2rem 1.4rem; font-size:0.93rem; max-width:72ch; }
+.dlg-body h3{ font-family:var(--cond); font-weight:600; font-size:1.05rem; margin:1.1rem 0 0.2rem; }
+.dlg-body p{ margin:0.3rem 0; color:var(--ink); }
+.eq{ font-family:"Cambria Math","STIX Two Math","Latin Modern Math","Times New Roman",serif; font-size:1.05rem; margin:0.4rem 0; padding:0.35rem 0.7rem; background:var(--paper); border-left:3px solid var(--cold); border-radius:0 6px 6px 0; overflow-x:auto; white-space:nowrap; }
+.eq var{ font-style:italic; }
+.dlg-body ul{ padding-left:1.1rem; margin:0.3rem 0; }
+.dlg-body li{ margin:0.25rem 0; }
+.dlg-body details{ font-size:inherit; color:var(--ink); border:1px solid var(--grid); border-radius:8px; padding:0.45rem 0.8rem; margin:0.45rem 0; }
+.dlg-body details[open]{ background:color-mix(in srgb, var(--paper) 55%, transparent); }
+.dlg-body summary{ font-weight:600; }
+table.glossary{ min-width:0; font-size:0.9rem; margin:0.3rem 0; }
+table.glossary td{ text-align:left !important; vertical-align:top; padding:0.3rem 0.5rem; }
+table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
+.fine{ font-size:0.82rem; color:var(--muted) !important; margin-top:1rem !important; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside aria-label="Inputs">
+    <h1>Brayton cycle explorer</h1>
+    <p class="fluid">Working fluid: air with temperature-dependent cp, then kerosene combustion products after the burner.</p>
+    <button type="button" class="infobtn" id="info-open"><span aria-hidden="true">i</span>User guide</button>
+    <button type="button" class="idealbtn" id="ideal" aria-pressed="false"><span class="dot" aria-hidden="true"></span>Ideal cycle</button>
+    <p class="hint idealhint">Sets compressor and turbine efficiency to 100 % and combustor pressure loss to 0. Press again to restore your values.</p>
+    <div id="controls"></div>
+    <details>
+      <summary>Model assumptions</summary>
+      <ul>
+        <li>Real-gas properties: cp(T) for dry air and cp(T, fuel–air ratio) for kerosene combustion products (Walsh &amp; Fletcher polynomials, fitted 200–2000 K, extended linearly to 2200 K). Ideal-gas equation of state; no dissociation.</li>
+        <li>ISA ambient conditions at the chosen altitude.</li>
+        <li>Ideal intake: full ram total pressure recovery.</li>
+        <li>Complete combustion of kerosene, LHV 43.1 MJ/kg. Fuel mass flow is included through the turbine and nozzle.</li>
+        <li>Turbine work equals compressor work (no mechanical losses or bleed).</li>
+        <li>Ideal nozzle, fully expanded to ambient pressure.</li>
+      </ul>
+    </details>
+  </aside>
+
+  <main>
+    <div class="results" aria-live="polite">
+      <div><div class="rlabel">Thermal efficiency</div><div class="rval" id="r-eth">–</div><div class="rsub">ΔKE / fuel heat</div></div>
+      <div><div class="rlabel">Propulsive efficiency</div><div class="rval" id="r-ep">–</div><div class="rsub">thrust power / ΔKE</div></div>
+      <div><div class="rlabel">Overall efficiency</div><div class="rval" id="r-eo">–</div><div class="rsub">thermal × propulsive</div></div>
+      <div><div class="rlabel">SFC</div><div class="rval" id="r-sfc">–</div><div class="rsub" id="r-sfc2">g/(kN·s)</div></div>
+      <div><div class="rlabel">Specific thrust</div><div class="rval" id="r-fs">–</div><div class="rsub">N per kg/s of air</div></div>
+      <div><div class="rlabel">Net thrust</div><div class="rval" id="r-fn">–</div><div class="rsub" id="r-fn2">kN</div></div>
+    </div>
+
+    <section class="chart">
+      <h2>T–s diagram</h2>
+      <p>Solid line: the real cycle, colored by temperature. Dashed: ideal isentropic compression and expansion, and heat rejection to the atmosphere. Faint lines are isobars at ambient pressure and at p₃ (dotted: p₄, when there is a combustor pressure loss). They are drawn as air below the combustor temperatures and as combustion products above them. Products have higher cp, so at the same T and p they sit at higher entropy.</p>
+      <svg class="plot" id="ts" role="img" aria-label="Temperature–entropy diagram of the cycle"></svg>
+      <div class="axisctl">
+        <label for="r-smax">Entropy axis max</label>
+        <input type="range" id="r-smax" min="0.3" max="3" step="0.05" value="3">
+        <span class="num"><input type="number" id="n-smax" min="0.3" max="3" step="any" value="3" inputmode="decimal" aria-label="Entropy axis max"><span class="unit">kJ/(kg·K)</span></span>
+      </div>
+      <div class="keybar" style="margin-left:60px"><span id="key-lo">T₀</span><span class="bar"></span><span id="key-hi">T₄</span></div>
+      <p class="msg" id="ts-msg" hidden></p>
+      <div class="tablewrap"><table id="states"></table></div>
+      <p class="tnote">γ is the local value c<sub>p</sub>/(c<sub>p</sub> − R) at the station. γ̄ is the effective value over the isentropic step ending at that station (intake 0→2, compressor 2→3s, turbine 4→5s, nozzle 5→9), the exponent that makes T₂/T₁ = (p₂/p₁)<sup>(γ̄−1)/γ̄</sup> exact. Compare both with the textbook 1.4.</p>
+    </section>
+
+    <section class="chart">
+      <h2>Performance</h2>
+      <p>Thrust and flow values scale with inlet mass flow; specific values are per kg/s of air.</p>
+      <div class="tablewrap"><table id="perf" class="perf"></table></div>
+    </section>
+
+    <section class="chart">
+      <h2>Where the fuel power goes</h2>
+      <p>Band widths are proportional to power; percentages are of the fuel heat input. The turbine power loop is taken from the hot gas and handed back to the air in the compressor, so it circulates inside the engine and is not a loss.</p>
+      <svg class="plot" id="sankey" role="img" aria-label="Power flow diagram from fuel heat to thrust power and losses"></svg>
+    </section>
+
+    <section class="chart">
+      <h2>Specific work vs pressure ratio</h2>
+      <p>Kinetic energy added per kg of air: ((1+f)V₉² − V₀²) / 2. Open circles mark each curve's optimum. The filled dot is your current design.</p>
+      <svg class="plot" id="work" role="img" aria-label="Specific work versus pressure ratio for several turbine inlet temperatures"></svg>
+      <div class="legend" id="leg-work"></div>
+    </section>
+
+    <section class="chart">
+      <h2>Thermal efficiency vs pressure ratio</h2>
+      <p>Kinetic energy added divided by fuel heat, for several T₄. Open circles mark each curve's optimum. The filled dot is your current design.</p>
+      <svg class="plot" id="eff" role="img" aria-label="Thermal efficiency versus pressure ratio for several turbine inlet temperatures"></svg>
+      <div class="legend" id="leg-eff"></div>
+    </section>
+
+    <section class="chart">
+      <h2>Thermal efficiency vs turbine inlet temperature</h2>
+      <p>For several pressure ratios, with all other inputs as set. Low T₄ is punished hardest by component losses; at high T₄ the curves flatten as real-gas effects and hotter exhaust take over.</p>
+      <svg class="plot" id="efft4" role="img" aria-label="Thermal efficiency versus turbine inlet temperature for several pressure ratios"></svg>
+      <div class="legend" id="leg-efft4"></div>
+    </section>
+    <section class="chart">
+      <h2>Atmosphere (ISA)</h2>
+      <p>Standard-atmosphere temperature and pressure versus altitude. Temperature falls 6.5 K per km up to 11 km, then stays at 216.65 K; pressure keeps falling. The dashed line marks your altitude.</p>
+      <svg class="plot" id="atmos" role="img" aria-label="ISA temperature and pressure versus altitude"></svg>
+      <div class="legend"><span><i style="border-color:var(--hot)"></i>Temperature (bottom axis)</span><span><i style="border-color:var(--cold)"></i>Pressure (top axis)</span></div>
+    </section>
+  </main>
+</div>
+
+
+<dialog id="info" aria-labelledby="info-title">
+  <div class="dlg-head"><h2 id="info-title">User guide</h2><button type="button" class="close" id="info-close" aria-label="Close">×</button></div>
+  <div class="dlg-body">
+
+    <h3>What this tool shows</h3>
+    <p>It models the simplest jet engine, a turbojet. Air comes in and is squeezed by the compressor. Fuel is burned in it, making it very hot. The hot gas spins a turbine, which takes out just enough power to drive the compressor. Everything left over leaves through the nozzle as a fast jet. Because the jet leaves faster than the air came in, the engine pushes the aircraft forward.</p>
+
+    <h3>How to use it</h3>
+    <ul>
+      <li>Drag a slider or type a number in its box. Every value and chart updates immediately.</li>
+      <li>Press <b>Ideal cycle</b> to make the compressor, turbine and combustor loss-free. Their sliders are greyed out until you press it again. This shows how much the losses cost.</li>
+      <li>If a combination cannot make a working engine, a red message explains why. A common case is a turbine inlet temperature lower than the compressor exit temperature.</li>
+      <li>In the charts with several curves, only one input is varied and all the others stay at your settings. The black dashed curve and black dot always show your current design.</li>
+    </ul>
+
+    <h3>The numbered points (stations)</h3>
+    <table class="glossary">
+      <tr><td>0</td><td>Still air ahead of the engine, at the chosen altitude</td></tr>
+      <tr><td>2</td><td>Compressor entry. Forward speed has already slowed and slightly compressed the air (ram effect)</td></tr>
+      <tr><td>3</td><td>Compressor exit: highest pressure in the engine</td></tr>
+      <tr><td>4</td><td>Turbine entry, just after the combustor: hottest point</td></tr>
+      <tr><td>5</td><td>Turbine exit</td></tr>
+      <tr><td>9</td><td>Nozzle exit: the jet leaves at outside air pressure</td></tr>
+    </table>
+
+    <h3>Reading the T–s diagram</h3>
+    <ul>
+      <li><b>Up</b> means hotter. <b>Right</b> means more entropy, which grows when heat is added and when there are losses (friction, mixing).</li>
+      <li>A <b>vertical line</b> is a perfect, loss-free compression or expansion. The dashed lines 2→3s and 4→5s show what perfect components would do.</li>
+      <li>The real lines <b>lean to the right</b>. The lower the component efficiency, the more they lean, and the more work the compressor needs or the less the turbine gives.</li>
+      <li>In the combustor (3→4) temperature climbs along a line of constant pressure (an <b>isobar</b>). A combustor pressure loss moves point 4 onto a slightly lower-pressure isobar, further right.</li>
+      <li>The dashed line from 9 back to 0 is the hot exhaust cooling down in the atmosphere. This closes the cycle; the heat lost here is the main loss of every jet engine.</li>
+    </ul>
+
+    <h3>What the results mean</h3>
+    <table class="glossary">
+      <tr><td>Thermal efficiency</td><td>Share of the fuel energy turned into extra kinetic energy of the gas. Mainly raised by pressure ratio.</td></tr>
+      <tr><td>Propulsive efficiency</td><td>Share of that kinetic energy that actually pushes the aircraft. Highest when the jet is only a little faster than the aircraft.</td></tr>
+      <tr><td>Overall efficiency</td><td>Thermal × propulsive: the share of fuel energy that ends up as useful thrust power.</td></tr>
+      <tr><td>SFC</td><td>Fuel burned per second for each unit of thrust. Lower is better.</td></tr>
+      <tr><td>Specific thrust</td><td>Thrust per kg/s of air. Higher means a smaller engine can give the same thrust.</td></tr>
+      <tr><td>Gross thrust</td><td>Push from the jet leaving the nozzle.</td></tr>
+      <tr><td>Ram drag</td><td>Drag from accelerating the incoming air up to the aircraft's speed.</td></tr>
+      <tr><td>Net thrust</td><td>Gross thrust minus ram drag: the force that actually moves the aircraft.</td></tr>
+    </table>
+
+    <h3>Where the fuel power goes</h3>
+    <p>The power-flow diagram starts with all the fuel heat (100 %). Part leaves as heat in the hot exhaust. The rest becomes jet power, of which only part becomes thrust power; the remainder is kinetic energy left behind in the jet. The loop shows the turbine power handed back to the compressor. It is large, often more than half the fuel power, but it circulates inside the engine and is not lost.</p>
+
+    <h3>How the numbers are calculated</h3>
+    <p>Tap a step to open it. The steps run in the same order as the program, and each uses results from the ones before. Values are per kg of air unless stated. R = 287.05 J/(kg·K).</p>
+
+    <details>
+      <summary>1. Outside air and flight condition</summary>
+      <p>The standard atmosphere (ISA) gives temperature and pressure at altitude <var>h</var> (in metres). Then the speed of sound and Mach number follow.</p>
+      <div class="eq"><span class="eqn">(1.1)</span><var>T</var><sub>0</sub> = 288.15 − 0.0065·<var>h</var>&emsp;(up to 11 000 m)</div>
+      <div class="eq"><span class="eqn">(1.2)</span><var>p</var><sub>0</sub> = 101 325·(<var>T</var><sub>0</sub>/288.15)<sup>5.25588</sup>&emsp;(up to 11 000 m)</div>
+      <div class="eq"><span class="eqn">(1.3)</span>Above 11 000 m:&emsp;<var>T</var><sub>0</sub> = 216.65 K,&emsp;<var>p</var><sub>0</sub> = 22 632·exp[−<var>g</var>(<var>h</var> − 11 000)/(<var>R</var><var>T</var><sub>0</sub>)],&emsp;<var>g</var> = 9.80665 m/s²</div>
+      <div class="eq"><span class="eqn">(1.4)</span>γ<sub>0</sub> = <var>c</var><sub>p,a</sub>(<var>T</var><sub>0</sub>) / [<var>c</var><sub>p,a</sub>(<var>T</var><sub>0</sub>) − <var>R</var>]</div>
+      <div class="eq"><span class="eqn">(1.5)</span><var>a</var><sub>0</sub> = √(γ<sub>0</sub><var>R</var><var>T</var><sub>0</sub>),&emsp;<var>M</var><sub>0</sub> = <var>V</var><sub>0</sub>/<var>a</var><sub>0</sub></div>
+    </details>
+
+    <details>
+      <summary>2. Gas properties that change with temperature</summary>
+      <p>Hot gas stores more energy per degree than cold gas, so specific heat <var>c</var><sub>p</sub> is a function of temperature. Combustion products get an extra term that grows with the fuel–air ratio <var>f</var>. Enthalpy <var>h</var> and the entropy function <var>φ</var> are integrals of <var>c</var><sub>p</sub>, measured from 298.15 K.</p>
+      <div class="eq"><span class="eqn">(2.1)</span><var>z</var> = <var>T</var>/1000</div>
+      <div class="eq"><span class="eqn">(2.2)</span><var>c</var><sub>p,a</sub>(<var>T</var>) = Σ<sub>i=0…8</sub> <var>A</var><sub>i</sub>·<var>z</var><sup>i</sup>&emsp;[kJ/(kg·K)], dry air</div>
+      <div class="eq"><span class="eqn">(2.3)</span><var>c</var><sub>p,g</sub>(<var>T</var>,<var>f</var>) = <var>c</var><sub>p,a</sub> + <var>f</var>/(1+<var>f</var>)·Σ<sub>i=0…7</sub> <var>B</var><sub>i</sub>·<var>z</var><sup>i</sup>,&emsp;kerosene products</div>
+      <div class="eq"><span class="eqn">(2.4)</span>Above 2000 K:&emsp;<var>c</var><sub>p,a</sub> = <var>c</var><sub>p,a</sub>(2000 K) + 0.055·(<var>z</var> − 2),&emsp;<var>B</var>-term held at its 2000 K value</div>
+      <div class="eq"><span class="eqn">(2.5)</span><var>h</var><sub>a</sub>(<var>T</var>) = ∫<sub>298.15</sub><sup><var>T</var></sup> <var>c</var><sub>p,a</sub> d<var>T</var>,&emsp;<var>h</var><sub>g</sub>(<var>T</var>,<var>f</var>) = <var>h</var><sub>a</sub>(<var>T</var>) + <var>f</var>/(1+<var>f</var>)·Δ<var>h</var><sub>B</sub>(<var>T</var>)</div>
+      <div class="eq"><span class="eqn">(2.6)</span><var>φ</var><sub>a</sub>(<var>T</var>) = ∫<sub>298.15</sub><sup><var>T</var></sup> (<var>c</var><sub>p,a</sub>/<var>T</var>) d<var>T</var>,&emsp;<var>φ</var><sub>g</sub>(<var>T</var>,<var>f</var>) = <var>φ</var><sub>a</sub>(<var>T</var>) + <var>f</var>/(1+<var>f</var>)·<var>φ</var><sub>B</sub>(<var>T</var>)</div>
+      <div class="eq"><span class="eqn">(2.7)</span><var>s</var>(<var>T</var>,<var>p</var>) = <var>φ</var>(<var>T</var>) − <var>R</var>·ln(<var>p</var>/<var>p</var><sub>0</sub>) − <var>φ</var><sub>a</sub>(<var>T</var><sub>0</sub>)&emsp;(zero at ambient)</div>
+      <div class="eq"><span class="eqn">(2.8)</span>Isentropic step a→b:&emsp;<var>φ</var>(<var>T</var><sub>b</sub>) = <var>φ</var>(<var>T</var><sub>a</sub>) + <var>R</var>·ln(<var>p</var><sub>b</sub>/<var>p</var><sub>a</sub>)</div>
+      <div class="eq"><span class="eqn">(2.9)</span>Temperature from <var>h</var> or <var>φ</var> (Newton):&emsp;<var>T</var> ← <var>T</var> − [<var>h</var>(<var>T</var>) − <var>h</var><sub>target</sub>]/<var>c</var><sub>p</sub>,&emsp;<var>T</var> ← <var>T</var> − [<var>φ</var>(<var>T</var>) − <var>φ</var><sub>target</sub>]·<var>T</var>/<var>c</var><sub>p</sub></div>
+      <h4>How this links to the familiar isentropic formula</h4>
+      <p>Equation (2.8) is the isentropic relation, written in the general form that still works when <var>c</var><sub>p</sub> changes with temperature. Both versions start from the entropy change of an ideal gas:</p>
+      <div class="eq"><span class="eqn">(2.10)</span>d<var>s</var> = <var>c</var><sub>p</sub>·d<var>T</var>/<var>T</var> − <var>R</var>·d<var>p</var>/<var>p</var></div>
+      <p>Isentropic means d<var>s</var> = 0, so <var>c</var><sub>p</sub>·d<var>T</var>/<var>T</var> = <var>R</var>·d<var>p</var>/<var>p</var>. Integrating from state 1 to state 2 gives two cases:</p>
+      <ul>
+        <li><b>Constant <var>c</var><sub>p</sub></b> (textbook model): <var>c</var><sub>p</sub> comes out of the integral, and with <var>R</var>/<var>c</var><sub>p</sub> = (γ−1)/γ:</li>
+      </ul>
+      <div class="eq"><span class="eqn">(2.11)</span><var>T</var><sub>2</sub>/<var>T</var><sub>1</sub> = (<var>p</var><sub>2</sub>/<var>p</var><sub>1</sub>)<sup>(γ−1)/γ</sup></div>
+      <ul>
+        <li><b><var>c</var><sub>p</sub> varying with <var>T</var></b> (this tool): <var>c</var><sub>p</sub> stays inside the integral. That integral is the entropy function <var>φ</var>, which gives (2.8) again: <var>φ</var>(<var>T</var><sub>2</sub>) − <var>φ</var>(<var>T</var><sub>1</sub>) = <var>R</var>·ln(<var>p</var><sub>2</sub>/<var>p</var><sub>1</sub>). With constant <var>c</var><sub>p</sub>, <var>φ</var> = <var>c</var><sub>p</sub>·ln <var>T</var> and it collapses exactly to (2.11).</li>
+      </ul>
+      <p>Two equivalent ways to write the real-gas version:</p>
+      <div class="eq"><span class="eqn">(2.12)</span>Relative pressure (classic air tables):&emsp;<var>p</var><sub>r</sub>(<var>T</var>) = exp[<var>φ</var>(<var>T</var>)/<var>R</var>],&emsp;<var>p</var><sub>2</sub>/<var>p</var><sub>1</sub> = <var>p</var><sub>r</sub>(<var>T</var><sub>2</sub>)/<var>p</var><sub>r</sub>(<var>T</var><sub>1</sub>)</div>
+      <div class="eq"><span class="eqn">(2.13)</span>Effective exponent:&emsp;<var>T</var><sub>2</sub>/<var>T</var><sub>1</sub> = (<var>p</var><sub>2</sub>/<var>p</var><sub>1</sub>)<sup>(γ̄−1)/γ̄</sup>,&emsp;c̄<sub>p</sub> = [<var>φ</var>(<var>T</var><sub>2</sub>) − <var>φ</var>(<var>T</var><sub>1</sub>)] / ln(<var>T</var><sub>2</sub>/<var>T</var><sub>1</sub>),&emsp;γ̄ = c̄<sub>p</sub>/(c̄<sub>p</sub> − <var>R</var>)</div>
+      <p>Form (2.13) looks exactly like the familiar formula, but γ̄ depends on the temperatures at both ends, so it can only be found by iteration. The state table shows γ̄ for each isentropic step, so you can see how far it is from 1.4.</p>
+      <p><b>Why it matters:</b> at the default settings the compressor starts at 319 K with pressure ratio 20. With γ = 1.4, (2.11) gives <var>T</var><sub>3s</sub> = 752 K; the real-gas relation gives 734 K, because γ̄ ≈ 1.39. In the turbine the hot combustion products have γ̄ ≈ 1.30, so assuming 1.4 there would misjudge the expansion far more.</p>
+      <p>Coefficients (Walsh &amp; Fletcher):</p>
+      <div class="tablewrap"><table class="coef">
+        <tr><th>i</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+        <tr><th>A<sub>i</sub></th><td>0.992313</td><td>0.236688</td><td>−1.852148</td><td>6.083152</td><td>−8.893933</td><td>7.097112</td><td>−3.234725</td><td>0.794571</td><td>−0.081873</td></tr>
+        <tr><th>B<sub>i</sub></th><td>−0.718874</td><td>8.747481</td><td>−15.863157</td><td>17.254096</td><td>−10.233795</td><td>3.081778</td><td>−0.361112</td><td>−0.003919</td><td></td></tr>
+      </table></div>
+    </details>
+
+    <details>
+      <summary>3. Intake: ram compression</summary>
+      <p>The incoming air is slowed to nearly zero speed relative to the engine. Its kinetic energy turns into temperature and pressure, with no losses assumed.</p>
+      <div class="eq"><span class="eqn">(3.1)</span><var>h</var><sub>2</sub> = <var>h</var><sub>a</sub>(<var>T</var><sub>0</sub>) + <var>V</var><sub>0</sub><sup>2</sup>/2&emsp;→&emsp;<var>T</var><sub>2</sub> by (2.9)</div>
+      <div class="eq"><span class="eqn">(3.2)</span><var>p</var><sub>2</sub> = <var>p</var><sub>0</sub>·exp{[<var>φ</var><sub>a</sub>(<var>T</var><sub>2</sub>) − <var>φ</var><sub>a</sub>(<var>T</var><sub>0</sub>)]/<var>R</var>}</div><div class="eq"><span class="eqn">(3.2′)</span>Same in familiar form:&emsp;<var>p</var><sub>2</sub>/<var>p</var><sub>0</sub> = (<var>T</var><sub>2</sub>/<var>T</var><sub>0</sub>)<sup>γ̄/(γ̄−1)</sup></div>
+    </details>
+
+    <details>
+      <summary>4. Compressor</summary>
+      <p>First the exit temperature of a perfect compressor (<var>T</var><sub>3s</sub>), then the real one, which needs more work by the factor 1/η<sub>c</sub>.</p>
+      <div class="eq"><span class="eqn">(4.1)</span><var>φ</var><sub>a</sub>(<var>T</var><sub>3s</sub>) = <var>φ</var><sub>a</sub>(<var>T</var><sub>2</sub>) + <var>R</var>·ln π<sub>c</sub>&emsp;→&emsp;<var>T</var><sub>3s</sub></div><div class="eq"><span class="eqn">(4.1′)</span>Same in familiar form:&emsp;<var>T</var><sub>3s</sub>/<var>T</var><sub>2</sub> = π<sub>c</sub><sup>(γ̄−1)/γ̄</sup>,&emsp;γ̄ from (2.13) over <var>T</var><sub>2</sub>…<var>T</var><sub>3s</sub></div>
+      <div class="eq"><span class="eqn">(4.2)</span><var>h</var><sub>3</sub> = <var>h</var><sub>2</sub> + [<var>h</var><sub>a</sub>(<var>T</var><sub>3s</sub>) − <var>h</var><sub>2</sub>]/η<sub>c</sub>&emsp;→&emsp;<var>T</var><sub>3</sub></div>
+      <div class="eq"><span class="eqn">(4.3)</span><var>p</var><sub>3</sub> = π<sub>c</sub>·<var>p</var><sub>2</sub></div>
+      <div class="eq"><span class="eqn">(4.4)</span><var>w</var><sub>c</sub> = <var>h</var><sub>3</sub> − <var>h</var><sub>2</sub>,&emsp;<var>P</var><sub>c</sub> = <var>ṁ</var>·<var>w</var><sub>c</sub></div>
+      <p>A working cycle needs <var>T</var><sub>4</sub> &gt; <var>T</var><sub>3</sub>.</p>
+    </details>
+
+    <details>
+      <summary>5. Combustor</summary>
+      <p>Fuel is added until the gas reaches <var>T</var><sub>4</sub>. The heat released must equal the rise in the gas's energy content, which fixes the fuel–air ratio. The combustor also costs some pressure.</p>
+      <div class="eq"><span class="eqn">(5.1)</span><var>p</var><sub>4</sub> = <var>p</var><sub>3</sub>·(1 − Δ<var>p</var><sub>b</sub>)</div>
+      <div class="eq"><span class="eqn">(5.2)</span>Energy balance:&emsp;<var>f</var>·LHV = (1+<var>f</var>)·<var>h</var><sub>g</sub>(<var>T</var><sub>4</sub>,<var>f</var>) − <var>h</var><sub>a</sub>(<var>T</var><sub>3</sub>)</div>
+      <div class="eq"><span class="eqn">(5.3)</span>Solved for <var>f</var>:&emsp;<var>f</var> = [<var>h</var><sub>a</sub>(<var>T</var><sub>4</sub>) − <var>h</var><sub>a</sub>(<var>T</var><sub>3</sub>)] / [LHV − <var>h</var><sub>a</sub>(<var>T</var><sub>4</sub>) − Δ<var>h</var><sub>B</sub>(<var>T</var><sub>4</sub>)]</div>
+      <div class="eq"><span class="eqn">(5.4)</span><var>Q</var> = <var>f</var>·LHV,&emsp;<var>ṁ</var><sub>f</sub> = <var>f</var>·<var>ṁ</var>,&emsp;LHV = 43.1 MJ/kg</div>
+    </details>
+
+    <details>
+      <summary>6. Turbine</summary>
+      <p>The turbine takes exactly the compressor work out of the gas (1+<var>f</var> kg per kg of air), which fixes <var>T</var><sub>5</sub>. A real turbine needs a bigger pressure drop than a perfect one for the same work.</p>
+      <div class="eq"><span class="eqn">(6.1)</span><var>h</var><sub>4</sub> = <var>h</var><sub>g</sub>(<var>T</var><sub>4</sub>,<var>f</var>)</div>
+      <div class="eq"><span class="eqn">(6.2)</span><var>h</var><sub>5</sub> = <var>h</var><sub>4</sub> − <var>w</var><sub>c</sub>/(1+<var>f</var>)&emsp;→&emsp;<var>T</var><sub>5</sub></div>
+      <div class="eq"><span class="eqn">(6.3)</span><var>h</var><sub>5s</sub> = <var>h</var><sub>4</sub> − (<var>h</var><sub>4</sub> − <var>h</var><sub>5</sub>)/η<sub>t</sub>&emsp;→&emsp;<var>T</var><sub>5s</sub></div>
+      <div class="eq"><span class="eqn">(6.4)</span><var>p</var><sub>5</sub> = <var>p</var><sub>4</sub>·exp{[<var>φ</var><sub>g</sub>(<var>T</var><sub>5s</sub>) − <var>φ</var><sub>g</sub>(<var>T</var><sub>4</sub>)]/<var>R</var>}</div><div class="eq"><span class="eqn">(6.4′)</span>Same in familiar form:&emsp;<var>T</var><sub>5s</sub>/<var>T</var><sub>4</sub> = (<var>p</var><sub>5</sub>/<var>p</var><sub>4</sub>)<sup>(γ̄−1)/γ̄</sup>,&emsp;γ̄ over <var>T</var><sub>5s</sub>…<var>T</var><sub>4</sub> for products</div>
+      <p>A working cycle needs <var>p</var><sub>5</sub> &gt; <var>p</var><sub>0</sub>, otherwise nothing is left to drive the jet.</p>
+    </details>
+
+    <details>
+      <summary>7. Nozzle</summary>
+      <p>The gas expands back to outside pressure, turning its remaining pressure into speed.</p>
+      <div class="eq"><span class="eqn">(7.1)</span><var>φ</var><sub>g</sub>(<var>T</var><sub>9</sub>) = <var>φ</var><sub>g</sub>(<var>T</var><sub>5</sub>) − <var>R</var>·ln(<var>p</var><sub>5</sub>/<var>p</var><sub>0</sub>)&emsp;→&emsp;<var>T</var><sub>9</sub></div><div class="eq"><span class="eqn">(7.1′)</span>Same in familiar form:&emsp;<var>T</var><sub>9</sub>/<var>T</var><sub>5</sub> = (<var>p</var><sub>0</sub>/<var>p</var><sub>5</sub>)<sup>(γ̄−1)/γ̄</sup></div>
+      <div class="eq"><span class="eqn">(7.2)</span><var>h</var><sub>9</sub> = <var>h</var><sub>g</sub>(<var>T</var><sub>9</sub>,<var>f</var>)</div>
+      <div class="eq"><span class="eqn">(7.3)</span><var>V</var><sub>9</sub> = √[2·(<var>h</var><sub>5</sub> − <var>h</var><sub>9</sub>)]</div>
+    </details>
+
+    <details>
+      <summary>8. Thrust, efficiencies and SFC</summary>
+      <div class="eq"><span class="eqn">(8.1)</span>Specific thrust&emsp;<var>F</var><sub>s</sub> = (1+<var>f</var>)·<var>V</var><sub>9</sub> − <var>V</var><sub>0</sub></div>
+      <div class="eq"><span class="eqn">(8.2)</span><var>F</var><sub>g</sub> = <var>ṁ</var>(1+<var>f</var>)<var>V</var><sub>9</sub>,&emsp;<var>D</var><sub>ram</sub> = <var>ṁ</var><var>V</var><sub>0</sub>,&emsp;<var>F</var><sub>n</sub> = <var>F</var><sub>g</sub> − <var>D</var><sub>ram</sub> = <var>ṁ</var><var>F</var><sub>s</sub></div>
+      <div class="eq"><span class="eqn">(8.3)</span>Jet power gain&emsp;Δ<var>KE</var> = [(1+<var>f</var>)·<var>V</var><sub>9</sub><sup>2</sup> − <var>V</var><sub>0</sub><sup>2</sup>]/2</div>
+      <div class="eq"><span class="eqn">(8.4)</span>η<sub>th</sub> = Δ<var>KE</var>/<var>Q</var></div>
+      <div class="eq"><span class="eqn">(8.5)</span>η<sub>p</sub> = <var>F</var><sub>s</sub><var>V</var><sub>0</sub>/Δ<var>KE</var>&emsp;(0 when <var>V</var><sub>0</sub> = 0)</div>
+      <div class="eq"><span class="eqn">(8.6)</span>η<sub>0</sub> = η<sub>th</sub>·η<sub>p</sub> = <var>F</var><sub>s</sub><var>V</var><sub>0</sub>/<var>Q</var></div>
+      <div class="eq"><span class="eqn">(8.7)</span>SFC = <var>f</var>/<var>F</var><sub>s</sub>&emsp;[kg/(N·s)];&emsp;×10<sup>6</sup> → g/(kN·s);&emsp;×3600·9.80665 → lb/(lbf·h)</div>
+      <p>With fuel mass neglected, (8.5) becomes the familiar 2<var>V</var><sub>0</sub>/(<var>V</var><sub>9</sub> + <var>V</var><sub>0</sub>).</p>
+    </details>
+
+    <details>
+      <summary>9. Power-flow diagram</summary>
+      <p>Each band is a power; widths are drawn to scale and percentages are of the fuel heat.</p>
+      <div class="eq"><span class="eqn">(9.1)</span>Fuel heat&emsp;<var>Q̇</var> = <var>ṁ</var>·<var>f</var>·LHV&emsp;(100 %)</div>
+      <div class="eq"><span class="eqn">(9.2)</span>Heat lost in exhaust&emsp;= <var>Q̇</var> − <var>ṁ</var>·Δ<var>KE</var></div>
+      <div class="eq"><span class="eqn">(9.3)</span>Jet power&emsp;= <var>ṁ</var>·Δ<var>KE</var></div>
+      <div class="eq"><span class="eqn">(9.4)</span>Thrust power&emsp;= <var>F</var><sub>n</sub>·<var>V</var><sub>0</sub></div>
+      <div class="eq"><span class="eqn">(9.5)</span>Kinetic energy left in jet&emsp;= <var>ṁ</var>·Δ<var>KE</var> − <var>F</var><sub>n</sub>·<var>V</var><sub>0</sub></div>
+      <div class="eq"><span class="eqn">(9.6)</span>Turbine → compressor loop&emsp;= <var>P</var><sub>c</sub> = <var>ṁ</var>·<var>w</var><sub>c</sub></div>
+    </details>
+
+    <details>
+      <summary>10. Drawing the T–s diagram and the sweep charts</summary>
+      <p>Station entropies come from (2.7), using air for stations 0, 2 and 3 and combustion products for 4, 5 and 9. Each process line is drawn with <var>n</var> = 40 points:</p>
+      <div class="eq"><span class="eqn">(10.1)</span><var>T</var><sub>i</sub> = <var>T</var><sub>a</sub>·(<var>T</var><sub>b</sub>/<var>T</var><sub>a</sub>)<sup>i/n</sup></div>
+      <div class="eq"><span class="eqn">(10.2)</span><var>s</var><sub>i</sub> = <var>s</var><sub>a</sub> + (<var>s</var><sub>b</sub> − <var>s</var><sub>a</sub>)·[<var>φ</var>(<var>T</var><sub>i</sub>) − <var>φ</var>(<var>T</var><sub>a</sub>)] / [<var>φ</var>(<var>T</var><sub>b</sub>) − <var>φ</var>(<var>T</var><sub>a</sub>)]</div>
+      <p>This is exact for perfect (vertical) steps, constant-pressure heating and cooling, and real compression or expansion at constant polytropic efficiency η<sub>pol</sub>, because then:</p>
+      <div class="eq"><span class="eqn">(10.3)</span><var>R</var>·d(ln <var>p</var>) = η<sub>pol</sub>·d<var>φ</var></div>
+      <p>Guide isobars use (2.7) at constant pressure, with air below <var>T</var><sub>3</sub>, a blend between <var>T</var><sub>3</sub> and <var>T</var><sub>4</sub>, and products above. The sweep charts repeat steps 1 to 8 for each point, changing only π<sub>c</sub> or <var>T</var><sub>4</sub>.</p>
+    </details>
+
+    <details>
+      <summary>Symbols</summary>
+      <table class="glossary">
+        <tr><td><var>T</var>, <var>p</var></td><td>Temperature [K], pressure [Pa]</td></tr>
+        <tr><td><var>h</var></td><td>Enthalpy: energy content of the flowing gas [J/kg]</td></tr>
+        <tr><td><var>c</var><sub>p</sub></td><td>Specific heat: energy to heat 1 kg by 1 K [J/(kg·K)]</td></tr>
+        <tr><td><var>φ</var>, <var>s</var></td><td>Entropy function and entropy [J/(kg·K)]</td></tr>
+        <tr><td><var>R</var></td><td>Gas constant, 287.05 J/(kg·K)</td></tr>
+        <tr><td><var>V</var><sub>0</sub>, <var>V</var><sub>9</sub></td><td>Flight speed, jet speed [m/s]</td></tr>
+        <tr><td><var>ṁ</var></td><td>Air mass flow [kg/s]</td></tr>
+        <tr><td><var>f</var></td><td>Fuel–air ratio [kg fuel per kg air]</td></tr>
+        <tr><td>π<sub>c</sub></td><td>Compressor pressure ratio</td></tr>
+        <tr><td>η<sub>c</sub>, η<sub>t</sub></td><td>Compressor and turbine isentropic efficiency</td></tr>
+        <tr><td>γ, γ̄</td><td>Ratio of specific heats <var>c</var><sub>p</sub>/(<var>c</var><sub>p</sub> − <var>R</var>) at one temperature; γ̄ is its effective value over an isentropic step (2.13)</td></tr>
+        <tr><td>Δ<var>p</var><sub>b</sub></td><td>Combustor pressure loss (fraction)</td></tr>
+        <tr><td>LHV</td><td>Fuel lower heating value, 43.1 MJ/kg</td></tr>
+        <tr><td><var>Q</var></td><td>Heat added per kg of air [J/kg]</td></tr>
+        <tr><td><var>w</var><sub>c</sub>, <var>P</var><sub>c</sub></td><td>Compressor work [J/kg] and power [W]</td></tr>
+      </table>
+    </details>
+
+    <p class="fine">Simplifications: ideal intake and nozzle, no bleed air or mechanical losses, complete combustion, no dissociation. Gas properties follow Walsh &amp; Fletcher (fitted to 2000 K, extended to 2200 K).</p>
+  </div>
+</dialog>
+<script>
+const LHV = 43.1e6, R = 287.05, TREF = 298.15;
+const CONTROLS = [
+  {id:"alt",  label:"Altitude", unit:"km", min:0, max:15, step:0.5, val:0, dec:1},
+  {id:"v0",   label:"Flight speed", unit:"m/s", min:0, max:1000, step:5, val:250, dec:0},
+  {id:"mdot", label:"Inlet mass flow", unit:"kg/s", min:0, max:150, step:1, val:50, dec:0},
+  {id:"pic",  label:"Compressor pressure ratio", unit:"", min:1, max:70, step:0.5, val:20, dec:1},
+  {id:"etac", label:"Compressor efficiency", unit:"", min:0.5, max:1, step:0.01, val:0.88, dec:2},
+  {id:"dpb",  label:"Combustor pressure loss", unit:"%", min:0, max:15, step:0.5, val:4, dec:1},
+  {id:"t4",   label:"Turbine inlet temperature T₄", unit:"K", min:800, max:2200, step:10, val:1500, dec:0},
+  {id:"etat", label:"Turbine efficiency", unit:"", min:0.5, max:1, step:0.01, val:0.90, dec:2}
+];
+// Entropy axis fixed to the widest possible range: the largest s any valid input set can reach is
+// about 2.75 kJ/(kg K) (T9 near 2200 K at ambient pressure, at 15 km), and no state lies below s0.
+const S_MIN = -0.2, S_MAX = 3.0;
+const T4_FAMILY = [1000, 1300, 1600, 1900, 2200];
+const PR_FAMILY = [4, 8, 15, 25, 40, 70];
+const PR_COLORS = ["#4FA3A5", "#6BAF5B", "#C9A227", "#C46A9A", "#8A6FC9", "#5A7FB8"];
+
+/* ---------- controls ---------- */
+const ctlBox = document.getElementById("controls");
+for (const c of CONTROLS) {
+  const d = document.createElement("div"); d.className = "field";
+  d.innerHTML = `<div class="field-head"><label for="n-${c.id}">${c.label}</label>
+    <span class="num"><input type="number" id="n-${c.id}" min="${c.min}" max="${c.max}" step="any" value="${c.val}" inputmode="decimal"><span class="unit">${c.unit}</span></span></div>
+    <input type="range" id="r-${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.val}" aria-label="${c.label}">
+    <div class="hint" id="h-${c.id}"></div>`;
+  ctlBox.appendChild(d);
+  const n = d.querySelector(`#n-${c.id}`), r = d.querySelector(`#r-${c.id}`);
+  r.addEventListener("input", () => { n.value = String(+(+r.value).toFixed(c.dec)); schedule(); });
+  n.addEventListener("input", () => {
+    const v = parseFloat(n.value);
+    if (isFinite(v) && v >= c.min && v <= c.max) { r.value = v; schedule(); }
+  });
+  n.addEventListener("change", () => {
+    let v = parseFloat(n.value); if (!isFinite(v)) v = c.val;
+    v = Math.min(c.max, Math.max(c.min, v)); n.value = v; r.value = v; schedule();
+  });
+}
+const SMAX = {min:0.3, max:3, val:3};
+{
+  const n = document.getElementById("n-smax"), r = document.getElementById("r-smax");
+  r.addEventListener("input", () => { n.value = String(+(+r.value).toFixed(2)); schedule(); });
+  n.addEventListener("input", () => { const v = parseFloat(n.value); if (isFinite(v) && v >= SMAX.min && v <= SMAX.max) { r.value = v; schedule(); } });
+  n.addEventListener("change", () => { let v = parseFloat(n.value); if (!isFinite(v)) v = SMAX.val; v = Math.min(SMAX.max, Math.max(SMAX.min, v)); n.value = v; r.value = v; schedule(); });
+}
+const IDEAL = {etac:1, etat:1, dpb:0};
+let idealSaved = null;
+document.getElementById("ideal").addEventListener("click", e => {
+  const btn = e.currentTarget, on = !idealSaved;
+  if (on) idealSaved = {};
+  for (const [id, v] of Object.entries(IDEAL)) {
+    const n = document.getElementById("n-" + id), r = document.getElementById("r-" + id);
+    if (on) { idealSaved[id] = n.value; n.value = v; r.value = v; }
+    else { n.value = idealSaved[id]; r.value = idealSaved[id]; }
+    n.disabled = r.disabled = on;
+    n.closest(".field").classList.toggle("locked", on);
+  }
+  if (!on) idealSaved = null;
+  btn.setAttribute("aria-pressed", String(on));
+  schedule();
+});
+function smaxVal() { const v = parseFloat(document.getElementById("n-smax").value); return isFinite(v) ? Math.min(SMAX.max, Math.max(SMAX.min, v)) : SMAX.val; }
+function val(id) {
+  const c = CONTROLS.find(x => x.id === id);
+  let v = parseFloat(document.getElementById("n-" + id).value);
+  if (!isFinite(v)) v = c.val;
+  return Math.min(c.max, Math.max(c.min, v));
+}
+
+/* ---------- real-gas properties (Walsh & Fletcher) ---------- */
+// Dry air cp [kJ/(kg K)] = sum A_i z^i, z = T/1000
+const A = [0.992313, 0.236688, -1.852148, 6.083152, -8.893933, 7.097112, -3.234725, 0.794571, -0.081873];
+// Kerosene products correction, weighted by f/(1+f)
+const B = [-0.718874, 8.747481, -15.863157, 17.254096, -10.233795, 3.081778, -0.361112, -0.003919];
+const cpPoly = (C, z) => { let s = 0, zp = 1; for (const c of C) { s += c * zp; zp *= z; } return s; };
+const hPoly  = (C, z) => { let s = 0, zp = z; for (let i = 0; i < C.length; i++) { s += C[i] * zp / (i + 1); zp *= z; } return s; };
+const phiPoly = (C, z) => { let s = C[0] * Math.log(z), zp = z; for (let i = 1; i < C.length; i++) { s += C[i] * zp / i; zp *= z; } return s; };
+const zr = TREF / 1000, ZX = 2.0;
+// Polynomials are fitted to 2000 K; above that cp is extended linearly (air +0.055 kJ/(kg K) per 1000 K, products correction held constant)
+function mkProps(C, slope) {
+  const c2 = cpPoly(C, ZX), h2 = hPoly(C, ZX), p2 = phiPoly(C, ZX), h0 = hPoly(C, zr), p0 = phiPoly(C, zr);
+  return {
+    cp:  z => z <= ZX ? cpPoly(C, z) : c2 + slope * (z - ZX),
+    h:   z => (z <= ZX ? hPoly(C, z) : h2 + c2 * (z - ZX) + slope * (z - ZX) * (z - ZX) / 2) - h0,
+    phi: z => (z <= ZX ? phiPoly(C, z) : p2 + (c2 - slope * ZX) * Math.log(z / ZX) + slope * (z - ZX)) - p0
+  };
+}
+const PA = mkProps(A, 0.055), PB = mkProps(B, 0);
+// all in J/kg and J/(kg K), relative to 298.15 K
+const cpA = T => 1000 * PA.cp(T / 1000);
+const hA  = T => 1e6 * PA.h(T / 1000);
+const hB  = T => 1e6 * PB.h(T / 1000);
+const phA = T => 1000 * PA.phi(T / 1000);
+const phB = T => 1000 * PB.phi(T / 1000);
+const cpG = (T, f) => cpA(T) + f / (1 + f) * 1000 * PB.cp(T / 1000);
+const hG  = (T, f) => hA(T) + f / (1 + f) * hB(T);
+const phG = (T, f) => phA(T) + f / (1 + f) * phB(T);
+function solveT(fn, target, dfn, guess) {
+  let T = guess || 800;
+  for (let i = 0; i < 30; i++) {
+    const dT = (fn(T) - target) / dfn(T);
+    T = Math.min(2600, Math.max(120, T - dT));
+    if (Math.abs(dT) < 1e-4) break;
+  }
+  return T;
+}
+const TfromH   = (h, f, g)   => solveT(T => hG(T, f), h, T => cpG(T, f), g);
+const TfromPhi = (ph, f, g)  => solveT(T => phG(T, f), ph, T => cpG(T, f) / T, g);
+
+/* ---------- cycle ---------- */
+function isa(km) {
+  const h = km * 1000;
+  if (h <= 11000) { const T = 288.15 - 0.0065 * h; return {T, p:101325 * Math.pow(T / 288.15, 5.25588)}; }
+  const T = 216.65; return {T, p:22632.06 * Math.exp(-9.80665 * (h - 11000) / (287.05 * T))};
+}
+function cycle(alt, V0, pic, T4, etac, etat, dpb) {
+  const {T:T0, p:p0} = isa(alt);
+  const cp0 = cpA(T0), g0 = cp0 / (cp0 - R), a0 = Math.sqrt(g0 * R * T0), M0 = V0 / a0;
+  const sRef = phA(T0);
+  const s = (T, p, f = 0) => phG(T, f) - R * Math.log(p / p0) - sRef;
+  // intake
+  const h0 = hA(T0), h2 = h0 + V0 * V0 / 2;
+  const T2 = TfromH(h2, 0, T0 + 50);
+  const p2 = p0 * Math.exp((phA(T2) - phA(T0)) / R);
+  // compressor
+  const T3s = TfromPhi(phA(T2) + R * Math.log(pic), 0, T2 * Math.pow(pic, 0.28));
+  const h3 = h2 + (hA(T3s) - h2) / etac;
+  const T3 = TfromH(h3, 0, T3s), p3 = p2 * pic;
+  const base = {T0, p0, a0, M0, T2, p2, T3s, T3, p3, T4, s, cp2:cpA(T2)};
+  if (T4 <= T3 + 1) return {...base, ok:false, msg:`T₄ must be above the compressor exit temperature (T₃ = ${T3.toFixed(0)} K). Raise T₄ or lower the pressure ratio.`};
+  // combustor
+  const p4 = p3 * (1 - dpb);
+  const f = (hA(T4) - hA(T3)) / (LHV - hA(T4) - hB(T4));
+  // turbine drives compressor
+  const wc = h3 - h2, h4 = hG(T4, f);
+  const h5 = h4 - wc / (1 + f), h5s = h4 - wc / ((1 + f) * etat);
+  if (h5s <= hG(150, f)) return {...base, p4, f, ok:false, msg:"The turbine cannot supply the compressor work. Raise T₄ or the component efficiencies, or lower the pressure ratio."};
+  const T5 = TfromH(h5, f, T4 * 0.8), T5s = TfromH(h5s, f, T5);
+  const p5 = p4 * Math.exp((phG(T5s, f) - phG(T4, f)) / R);
+  if (p5 <= p0) return {...base, p4, f, ok:false, msg:"Driving the compressor uses up all the pressure, leaving nothing for the nozzle. Raise T₄ or the component efficiencies, or lower the pressure ratio and combustor loss."};
+  // nozzle
+  const T9 = TfromPhi(phG(T5, f) - R * Math.log(p5 / p0), f, T5 * 0.8);
+  const V9 = Math.sqrt(Math.max(0, 2 * (h5 - hG(T9, f))));
+  // performance per kg of air
+  const Q = f * LHV, Fs = (1 + f) * V9 - V0, wnet = ((1 + f) * V9 * V9 - V0 * V0) / 2;
+  const eth = wnet / Q, ep = V0 > 0 && wnet > 0 ? Fs * V0 / wnet : 0, eo = Fs * V0 / Q;
+  const sfc = Fs > 0 ? f / Fs : NaN;
+  return {...base, ok:true, wc, p4, f, T5, T5s, p5, T9, V9, Q, Fs, wnet, eth, ep, eo, sfc, cp4:cpG(T4, f)};
+}
+
+/* ---------- plotting ---------- */
+function hexToRgb(h) { h = h.trim().replace("#", ""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+function heat(t) {
+  const cs = getComputedStyle(document.documentElement);
+  const a = hexToRgb(cs.getPropertyValue("--cold")), b = hexToRgb(cs.getPropertyValue("--warm")), c = hexToRgb(cs.getPropertyValue("--hot"));
+  t = Math.max(0, Math.min(1, t));
+  const [p, q, u] = t < 0.5 ? [a, b, t * 2] : [b, c, (t - 0.5) * 2];
+  return `rgb(${p.map((v, i) => Math.round(v + (q[i] - v) * u)).join(",")})`;
+}
+function niceTicks(min, max, n) {
+  const span = max - min; if (span <= 0) return [min];
+  const raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), r = raw / mag;
+  const step = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * mag;
+  const out = []; for (let v = Math.ceil(min / step) * step; v <= max + step * 1e-6; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function niceFloor(v, s) { return Math.floor(v / s) * s; }
+function niceCeil(v) {
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v))), r = v / mag;
+  return ([1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(x => x >= r) || 10) * mag;
+}
+let clipN = 0;
+function drawPlot(svg, c) {
+  const W = Math.max(320, Math.min(900, svg.parentElement.clientWidth - 2));
+  const H = Math.round(Math.max(260, Math.min(c.maxH || 420, W * (c.aspect || 0.56))));
+  const m = {l:60, r:c.y2 ? 62 : 16, t:c.x2 ? 46 : 12, b:46}, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const X = x => m.l + (x - c.xmin) / (c.xmax - c.xmin) * pw, Xp = X;
+  const X2 = c.x2 ? (x => m.l + (x - c.x2.min) / (c.x2.max - c.x2.min) * pw) : X;
+  const Y = y => m.t + ph - (y - c.ymin) / (c.ymax - c.ymin) * ph, Yp = Y;
+  const Y2 = c.y2 ? (y => m.t + ph - (y - c.y2.min) / (c.y2.max - c.y2.min) * ph) : Y;
+  const fmt = v => Math.abs(v) >= 1000 ? v.toFixed(0) : String(+v.toPrecision(6));
+  const id = "clip" + (++clipN);
+  let s = `<defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+  const nx = Math.max(3, Math.round(pw / 80)), ny = Math.max(3, Math.round(ph / 55));
+  for (const v of niceTicks(c.xmin, c.xmax, nx)) {
+    s += `<line class="grid" x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${m.t + ph}"/><text x="${X(v)}" y="${m.t + ph + 17}" text-anchor="middle">${fmt(v)}</text>`;
+  }
+  for (const v of niceTicks(c.ymin, c.ymax, ny)) {
+    s += `<line class="grid" x1="${m.l}" x2="${m.l + pw}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 7}" y="${Y(v) + 4}" text-anchor="end">${fmt(v)}</text>`;
+  }
+  if (c.x2) for (const v of niceTicks(c.x2.min, c.x2.max, nx)) s += `<text x="${X2(v)}" y="${m.t - 7}" text-anchor="middle">${fmt(v)}</text>`;
+  if (c.y2) for (const v of niceTicks(c.y2.min, c.y2.max, ny)) s += `<text x="${m.l + pw + 7}" y="${Y2(v) + 4}" text-anchor="start">${fmt(v)}</text>`;
+  s += `<rect class="frame" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/><g clip-path="url(#${id})">`;
+  for (const v of c.hlines || []) s += `<line x1="${m.l}" x2="${m.l + pw}" y1="${Yp(v.y)}" y2="${Yp(v.y)}" style="stroke:var(--ink);stroke-width:1.2;stroke-dasharray:4 4"/>`;
+  for (const v of c.vlines || []) s += `<line x1="${X(v.x)}" x2="${X(v.x)}" y1="${m.t}" y2="${m.t + ph}" style="stroke:var(--ink);stroke-width:1.2;stroke-dasharray:4 4"/>`;
+  for (const L of c.lines) {
+    const Y = L.y2 ? Y2 : Yp, X = L.x2 ? X2 : Xp;
+    const st = `stroke-width:${L.width || 2};${L.dash ? `stroke-dasharray:${L.dash};` : ""}fill:none;stroke-linecap:round;stroke-linejoin:round;`;
+    if (L.colorFn) {
+      for (let i = 1; i < L.pts.length; i++) {
+        const [x1, y1] = L.pts[i - 1], [x2, y2] = L.pts[i];
+        s += `<line x1="${X(x1)}" y1="${Y(y1)}" x2="${X(x2)}" y2="${Y(y2)}" style="${st}stroke:${L.colorFn((y1 + y2) / 2)}"/>`;
+      }
+    } else {
+      let d = "", pen = false;
+      for (const [x, y] of L.pts) {
+        if (y === null || !isFinite(y)) { pen = false; continue; }
+        d += (pen ? "L" : "M") + X(x).toFixed(1) + "," + Y(y).toFixed(1); pen = true;
+      }
+      if (d) s += `<path d="${d}" style="${st}stroke:${L.color}"/>`;
+    }
+  }
+  for (const p of c.markers || []) {
+    const Y = p.y2 ? Y2 : Yp, X = p.x2 ? X2 : Xp;
+    const fill = p.hollow ? "var(--panel)" : (p.color || "var(--ink)");
+    s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="${p.r || 4}" style="fill:${fill};stroke:${p.color || "var(--ink)"};stroke-width:1.6"/>`;
+    if (p.label) s += `<text class="lbl" x="${X(p.x) + (p.dx || 8)}" y="${Y(p.y) + (p.dy || 4)}" text-anchor="${(p.dx || 8) < 0 ? "end" : "start"}">${p.label}</text>`;
+  }
+  s += `</g>`;
+  s += `<text class="axis" x="${m.l + pw / 2}" y="${H - 8}" text-anchor="middle">${c.xlabel}</text>`;
+  s += `<text class="axis" transform="translate(15,${m.t + ph / 2}) rotate(-90)" text-anchor="middle">${c.ylabel}</text>`;
+  if (c.x2) s += `<text class="axis" x="${m.l + pw / 2}" y="16" text-anchor="middle">${c.x2.label}</text>`;
+  if (c.y2) s += `<text class="axis" transform="translate(${W - 12},${m.t + ph / 2}) rotate(90)" text-anchor="middle">${c.y2.label}</text>`;
+  if (c.note) s += `<text class="note" x="${m.l + pw / 2}" y="${m.t + ph / 2}" text-anchor="middle">${c.note}</text>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+}
+
+// Real-gas process paths: T is stepped geometrically and entropy is taken as linear in the entropy
+// function phi(T). That is exact for isentropic (vertical), isobaric and constant-polytropic-efficiency
+// processes, since for the latter R d(ln p) = eta_p d(phi).
+function path(cy, Ta, pa, Tb, pb, fa = 0, fb = fa, n = 40) {
+  const sa = cy.s(Ta, pa, fa), sb = cy.s(Tb, pb, fb);
+  const fm = (fa + fb) / 2, pa_ = phG(Ta, fm), dphi = phG(Tb, fm) - pa_;
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, T = Ta * Math.pow(Tb / Ta, t);
+    const u = Math.abs(dphi) > 1e-9 ? (phG(T, fm) - pa_) / dphi : t;
+    pts.push([(sa + (sb - sa) * u) / 1000, T]);
+  }
+  return pts;
+}
+
+/* ---------- power-flow (Sankey) diagram ---------- */
+function drawSankey(svg, cy, mdot, V0) {
+  const W = Math.max(320, Math.min(900, svg.parentElement.clientWidth - 2));
+  const H = Math.round(Math.max(320, Math.min(460, W * 0.62)));
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  if (!cy.ok || cy.wnet <= 0 || cy.Fs < 0) {
+    svg.innerHTML = `<text class="note" x="${W / 2}" y="${H / 2}" text-anchor="middle">No working cycle with these inputs</text>`;
+    return;
+  }
+  const Q = cy.Q, Pc = cy.wc, Wj = cy.wnet, Hx = Q - Wj, Pt = Math.max(0, cy.Fs * V0), Pk = Wj - Pt;
+  const mw = x => { const v = mdot * x / 1e6; return (v < 10 ? v.toFixed(2) : v.toFixed(1)) + " MW"; };
+  const pc = x => (100 * x / Q).toFixed(1) + " %";
+  const topPad = 40, loopGap = 22, G = 30, botPad = 40, nodeW = 10, d = Math.max(26, W * 0.07);
+  const k = (H - topPad - loopGap - 2 * G - botPad) / (2 * Pc + Q);
+  const wPc = Pc * k, wQ = Q * k, wJ = Wj * k, wH = Hx * k, wT = Pt * k, wK = Pk * k;
+  const yC0 = topPad + wPc + loopGap, rho = (wPc + loopGap) / 2, loopExt = d + rho + wPc / 2;
+  const xB = Math.max(W * 0.22, loopExt + 40), x2 = xB + nodeW;
+  const xD = Math.max(W * 0.6, x2 + loopExt + 30), xE = W - 6;
+  const ribbon = (xa, ya, xb, yb, w, color, op) => {
+    if (w < 0.3) return "";
+    const xm = (xa + xb) / 2;
+    return `<path d="M${xa},${ya} C${xm},${ya} ${xm},${yb} ${xb},${yb} L${xb},${yb + w} C${xm},${yb + w} ${xm},${ya + w} ${xa},${ya + w} Z" style="fill:${color};opacity:${op}"/>`;
+  };
+  const label = (x, y, anchor, name, value) =>
+    `<text x="${x}" y="${y}" text-anchor="${anchor}"><tspan class="lbl" style="font-size:13px">${name}</tspan><tspan dx="6">${value}</tspan></text>`;
+  let s = "";
+  const yJ = yC0 + wPc;
+  s += ribbon(6, yJ, xB, yJ, wQ, "var(--hot)", 0.85);                                  // fuel heat
+  if (wPc > 0.5) {                                                                    // turbine → compressor loop
+    const y0 = yC0 + wPc / 2, yL = topPad + wPc / 2;
+    s += `<path d="M${x2},${y0} H${x2 + d} A${rho},${rho} 0 0 0 ${x2 + d},${yL} H${xB - d} A${rho},${rho} 0 0 0 ${xB - d},${y0} H${xB}" style="fill:none;stroke:var(--warm);stroke-width:${wPc};opacity:0.6"/>`;
+    const ax = xB + nodeW / 2, a = Math.min(wPc * 0.35, 11);
+    if (a > 3) s += `<path d="M${ax - a},${yL} L${ax + a * 0.6},${yL - a} L${ax + a * 0.6},${yL + a} Z" style="fill:var(--panel);opacity:0.9"/>`;
+  }
+  s += ribbon(x2, yJ, xD, yJ, wJ, "var(--cold)", 0.8);                                 // jet power
+  s += ribbon(x2, yJ + wJ, xE, yJ + wJ + 2 * G, wH, "var(--muted)", 0.35);             // exhaust heat
+  s += ribbon(xD + nodeW, yJ, xE, yJ, wT, "var(--cold)", 0.95);                        // thrust power
+  s += ribbon(xD + nodeW, yJ + wT, xE, yJ + wT + G, wK, "var(--cold)", 0.35);          // KE left in jet
+  s += `<rect x="${xB}" y="${yC0}" width="${nodeW}" height="${wPc + wQ}" style="fill:var(--ink)"/>`;
+  s += `<rect x="${xD}" y="${yJ}" width="${nodeW}" height="${Math.max(wJ, 1)}" style="fill:var(--ink)"/>`;
+  s += `<text x="6" y="${yJ + wQ + 17}" class="lbl" style="font-size:13px">Fuel heat input</text><text x="6" y="${yJ + wQ + 32}">${mw(Q)} (100 %)</text>`;
+  if (wPc > 0.5) s += `<text x="${xB + nodeW / 2}" y="${topPad - 22}" text-anchor="middle" class="lbl" style="font-size:13px">Turbine drives compressor (circulates inside)</text><text x="${xB + nodeW / 2}" y="${topPad - 8}" text-anchor="middle">${mw(Pc)} (${pc(Pc)})</text>`;
+  if (wJ >= 20) s += `<text x="${(x2 + xD) / 2}" y="${yJ + wJ / 2 + 5}" text-anchor="middle" style="fill:#fff;font-size:13px"><tspan style="font-weight:600">Jet power</tspan><tspan dx="6">${mw(Wj)} (${pc(Wj)})</tspan></text>`;
+  else s += label(xD - 4, yJ + wJ + 16, "end", "Jet power", `${mw(Wj)} (${pc(Wj)})`);
+  s += label(xE, yJ - 7, "end", "Thrust power", `${mw(Pt)} (${pc(Pt)})`);
+  s += label(xE, yJ + wT + G - 7, "end", "Kinetic energy left in jet", `${mw(Pk)} (${pc(Pk)})`);
+  s += label(xE, yJ + wJ + 2 * G - 7, "end", "Heat lost in exhaust", `${mw(Hx)} (${pc(Hx)})`);
+  svg.innerHTML = s;
+}
+
+/* ---------- render ---------- */
+function perfTable(cy, mdot, V0) {
+  const dash = "–", ok = cy.ok;
+  const n = (x, d) => ok && isFinite(x) ? x.toFixed(d) : dash;
+  const Fg = mdot * (1 + (cy.f || 0)) * (cy.V9 || 0), Dr = mdot * V0, Fn = Fg - Dr;
+  const groups = [
+    ["Thrust", [
+      ["Gross thrust  ṁ(1+f)V₉", n(Fg / 1000, 2), "kN"],
+      ["Inlet ram drag  ṁV₀", ok ? (Dr / 1000).toFixed(2) : dash, "kN"],
+      ["Net thrust  F<sub>g</sub> − D<sub>ram</sub>", n(Fn / 1000, 2), "kN"],
+      ["Specific thrust", n(cy.Fs, 1), "N·s/kg"]
+    ]],
+    ["Flow and fuel", [
+      ["Inlet air mass flow", mdot.toFixed(0), "kg/s"],
+      ["Fuel–air ratio", n(cy.f, 5), ""],
+      ["Fuel flow", n(mdot * cy.f, 3), "kg/s"],
+      ["Fuel flow", n(mdot * cy.f * 3600, 0), "kg/h"],
+      ["SFC", n(cy.sfc * 1e6, 2), "g/(kN·s)"],
+      ["SFC", n(cy.sfc * 3600 * 9.80665, 3), "lb/(lbf·h)"]
+    ]],
+    ["Velocities", [
+      ["Flight speed", V0.toFixed(0), "m/s"],
+      ["Flight Mach number", cy.M0.toFixed(3), ""],
+      ["Jet velocity V₉", n(cy.V9, 1), "m/s"]
+    ]],
+    ["Energy", [
+      ["Specific work ΔKE", n(cy.wnet / 1000, 1), "kJ/kg"],
+      ["Fuel heat input", n(mdot * cy.Q / 1e6, 2), "MW"],
+      ["Jet power gain  ṁ·ΔKE", n(mdot * cy.wnet / 1e6, 2), "MW"],
+      ["Thrust power  F<sub>n</sub>·V₀", n(Fn * V0 / 1e6, 2), "MW"],
+      ["Compressor (= turbine) power", ok ? (mdot * cy.wc / 1e6).toFixed(2) : dash, "MW"]
+    ]],
+    ["Efficiencies", [
+      ["Thermal", ok ? (cy.eth * 100).toFixed(2) : dash, "%"],
+      ["Propulsive", ok ? (cy.ep * 100).toFixed(2) : dash, "%"],
+      ["Overall", ok ? (cy.eo * 100).toFixed(2) : dash, "%"]
+    ]]
+  ];
+  return `<tr><th>Parameter</th><th style="text-align:right">Value</th><th>Unit</th></tr>` +
+    groups.map(([g, rows]) => `<tr class="grp"><td colspan="3">${g}</td></tr>` +
+      rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")).join("");
+}
+
+const $ = id => document.getElementById(id);
+const pct = x => isFinite(x) ? (x * 100).toFixed(1) + " %" : "–";
+function render() {
+  const mdot = val("mdot");
+  const alt = val("alt"), V0 = val("v0"), pic = val("pic"), T4 = val("t4"),
+        etac = val("etac"), etat = val("etat"), dpb = val("dpb") / 100;
+  const cy = cycle(alt, V0, pic, T4, etac, etat, dpb);
+
+  $("h-alt").textContent = `T₀ = ${cy.T0.toFixed(1)} K, p₀ = ${(cy.p0 / 1000).toFixed(1)} kPa`;
+  $("h-v0").textContent = `Mach ${cy.M0.toFixed(2)}, ram pressure ratio ${(cy.p2 / cy.p0).toFixed(2)}`;
+  $("h-pic").textContent = `T₃ = ${cy.T3.toFixed(0)} K, p₃ = ${(cy.p3 / 1000).toFixed(0)} kPa`;
+  $("h-etac").textContent = `cp at inlet ${(cy.cp2 / 1000).toFixed(3)} kJ/(kg·K)`;
+  $("h-dpb").textContent = cy.p4 ? `p₄ = ${(cy.p4 / 1000).toFixed(0)} kPa` : "";
+  $("h-t4").textContent = cy.f !== undefined ? `Fuel–air ratio ${cy.f.toFixed(4)}` + (cy.ok ? `, cp ${(cy.cp4 / 1000).toFixed(3)} kJ/(kg·K)` : "") : "";
+  $("h-etat").textContent = cy.ok ? `T₅ = ${cy.T5.toFixed(0)} K, jet velocity V₉ = ${cy.V9.toFixed(0)} m/s` : "";
+
+  if (cy.ok) {
+    $("r-eth").textContent = pct(cy.eth);
+    $("r-ep").textContent = V0 > 0 ? pct(cy.ep) : "0 %";
+    $("r-eo").textContent = pct(cy.eo);
+    $("r-sfc").textContent = isFinite(cy.sfc) ? (cy.sfc * 1e6).toFixed(1) : "–";
+    $("r-sfc2").textContent = isFinite(cy.sfc) ? `g/(kN·s), ${(cy.sfc * 3600 * 9.80665).toFixed(3)} lb/(lbf·h)` : "no positive thrust";
+    $("r-fs").textContent = cy.Fs.toFixed(0);
+    $("r-fn").textContent = (mdot * cy.Fs / 1000).toFixed(1);
+  } else {
+    for (const k of ["r-eth", "r-ep", "r-eo", "r-sfc", "r-fs", "r-fn"]) $(k).textContent = "–";
+    $("r-sfc2").textContent = "g/(kN·s)";
+  }
+  $("perf").innerHTML = perfTable(cy, mdot, V0);
+  drawSankey($("sankey"), cy, mdot, V0);
+
+  /* atmosphere */
+  const aT = [], aP = [];
+  for (let h = 0; h <= 15.0001; h += 0.25) { const a = isa(h); aT.push([a.T, h]); aP.push([a.p / 1000, h]); }
+  const nearTop = alt > 13.5, nearBottom = alt < 1.5;
+  drawPlot($("atmos"), {
+    xmin:200, xmax:300, ymin:0, ymax:15, x2:{min:0, max:120, label:"Pressure p₀ [kPa]"},
+    xlabel:"Temperature T₀ [K]", ylabel:"Altitude [km]", aspect:0.8, maxH:540,
+    hlines:[{y:alt}],
+    lines:[{pts:aT, color:"var(--hot)", width:2.5}, {pts:aP, color:"var(--cold)", width:2.5, x2:true}],
+    markers:[
+      {x:cy.T0, y:alt, color:"var(--hot)", r:5, label:`T₀ ${cy.T0.toFixed(1)} K`, dx:9, dy:nearBottom ? -24 : nearTop ? 34 : 18},
+      {x:cy.p0 / 1000, y:alt, x2:true, color:"var(--cold)", r:5, label:`p₀ ${(cy.p0 / 1000).toFixed(1)} kPa`, dx:9, dy:nearTop ? 18 : -8}
+    ]
+  });
+
+  /* T–s */
+  const msg = $("ts-msg"), tsSvg = $("ts");
+  if (!cy.ok) {
+    msg.hidden = false; msg.textContent = cy.msg;
+    drawPlot(tsSvg, {xmin:-0.07 * smaxVal(), xmax:smaxVal(), ymin:100, ymax:2300, xlabel:"Entropy s − s₀ [kJ/(kg·K)]", ylabel:"Temperature T [K]", lines:[], note:"No working cycle with these inputs"});
+    $("states").innerHTML = "";
+  } else {
+    msg.hidden = true;
+    const f = cy.f;
+    const heatT = T => heat((T - cy.T0) / (cy.T4 - cy.T0));
+    const real = [
+      ...path(cy, cy.T0, cy.p0, cy.T2, cy.p2),
+      ...path(cy, cy.T2, cy.p2, cy.T3, cy.p3),
+      ...path(cy, cy.T3, cy.p3, cy.T4, cy.p4, 0, f),
+      ...path(cy, cy.T4, cy.p4, cy.T5, cy.p5, f),
+      ...path(cy, cy.T5, cy.p5, cy.T9, cy.p0, f)
+    ];
+    const rej = path(cy, cy.T9, cy.p0, cy.T0, cy.p0, f, 0);
+    const ic = path(cy, cy.T2, cy.p2, cy.T3s, cy.p3, 0, 0, 2), it = path(cy, cy.T4, cy.p4, cy.T5s, cy.p5, f, f, 2);
+    const xmax = smaxVal(), xmin = -0.07 * xmax;
+    const ymin = 100, ymax = 2300;
+    // Guide isobars follow the cycle's composition: air below the heat-addition/rejection
+    // temperature range, the same air-to-products blend through it, products above it.
+    const isoSeg = (p, ff, Ta, Tb) => { const pts = []; if (Tb <= Ta) return pts; for (let i = 0; i <= 30; i++) { const T = Ta + (Tb - Ta) * i / 30; pts.push([cy.s(T, p, ff) / 1000, T]); } return pts; };
+    // True isobars: constant pressure throughout, composition blended over T3..T4 like the combustor
+    const isoComb = pp => [...isoSeg(pp, 0, ymin + 1, cy.T3), ...path(cy, cy.T3, pp, cy.T4, pp, 0, f), ...isoSeg(pp, f, cy.T4, ymax)];
+    const isoP3 = isoComb(cy.p3), isoP4 = isoComb(cy.p4);
+    const isoLow = cy.T9 > cy.T0
+      ? [...isoSeg(cy.p0, 0, ymin + 1, cy.T0), ...path(cy, cy.T0, cy.p0, cy.T9, cy.p0, 0, f), ...isoSeg(cy.p0, f, cy.T9, ymax)]
+      : isoSeg(cy.p0, 0, ymin + 1, ymax);
+    const pt = (T, p, ff = 0) => cy.s(T, p, ff) / 1000;
+    drawPlot(tsSvg, {
+      xmin, xmax, ymin, ymax,
+      xlabel:"Entropy s − s₀ [kJ/(kg·K)]", ylabel:"Temperature T [K]",
+      lines:[
+        {pts:isoLow, color:"var(--line)", width:1},
+        {pts:isoP3, color:"var(--line)", width:1},
+        ...(cy.p4 < cy.p3 ? [{pts:isoP4, color:"var(--line)", width:1, dash:"2 3"}] : []),
+        {pts:rej, color:"var(--muted)", width:1.5, dash:"5 5"},
+        {pts:ic, color:"var(--muted)", width:1.5, dash:"4 4"},
+        {pts:it, color:"var(--muted)", width:1.5, dash:"4 4"},
+        {pts:real, colorFn:heatT, width:3.2}
+      ],
+      markers:[
+        ...(etac < 0.999 ? [{x:pt(cy.T3s, cy.p3), y:cy.T3s, hollow:true, r:3, color:"var(--muted)", label:"3s", dx:-8}] : []),
+        ...(etat < 0.999 ? [{x:pt(cy.T5s, cy.p5, f), y:cy.T5s, hollow:true, r:3, color:"var(--muted)", label:"5s", dx:-8}] : []),
+        {x:pt(cy.T0, cy.p0), y:cy.T0, label:"0", dx:-9, dy:12},
+        {x:pt(cy.T2, cy.p2), y:cy.T2, label:"2", dx:-9},
+        {x:pt(cy.T3, cy.p3), y:cy.T3, label:"3", dx:-9},
+        {x:pt(cy.T4, cy.p4, f), y:cy.T4, label:"4", dx:9},
+        {x:pt(cy.T5, cy.p5, f), y:cy.T5, label:"5", dx:9},
+        {x:pt(cy.T9, cy.p0, f), y:cy.T9, label:"9", dx:9}
+      ]
+    });
+    $("key-lo").textContent = `T₀ ${cy.T0.toFixed(0)} K`;
+    $("key-hi").textContent = `T₄ ${cy.T4.toFixed(0)} K`;
+    const gLoc = (T, ff) => { const c = cpG(T, ff); return c / (c - R); };
+    const gBar = (Ta, Tb, ff) => {
+      if (Math.abs(Math.log(Tb / Ta)) < 1e-6) return gLoc(Ta, ff);
+      const c = (phG(Tb, ff) - phG(Ta, ff)) / Math.log(Tb / Ta); return c / (c - R);
+    };
+    const rows = [
+      ["0", "Ambient", cy.T0, cy.p0, 0, null],
+      ["2", "Compressor inlet (after ram)", cy.T2, cy.p2, 0, gBar(cy.T0, cy.T2, 0)],
+      ["3", "Compressor exit", cy.T3, cy.p3, 0, gBar(cy.T2, cy.T3s, 0)],
+      ["4", "Turbine inlet", cy.T4, cy.p4, f, null],
+      ["5", "Turbine exit", cy.T5, cy.p5, f, gBar(cy.T5s, cy.T4, f)],
+      ["9", "Nozzle exit", cy.T9, cy.p0, f, gBar(cy.T9, cy.T5, f)]
+    ];
+    const sv = r => { const x = cy.s(r[2], r[3], r[4]); return (Math.abs(x) < 0.5 ? 0 : x / 1000).toFixed(3); };
+    $("states").innerHTML = `<tr><th>Station</th><th>Location</th><th>T [K]</th><th>p [kPa]</th><th>cp [kJ/(kg·K)]</th><th>γ</th><th>γ̄ step</th><th>s − s₀ [kJ/(kg·K)]</th></tr>` +
+      rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2].toFixed(1)}</td><td>${(r[3] / 1000).toFixed(1)}</td><td>${(cpG(r[2], r[4]) / 1000).toFixed(4)}</td><td>${gLoc(r[2], r[4]).toFixed(4)}</td><td>${r[5] === null ? "–" : r[5].toFixed(4)}</td><td>${sv(r)}</td></tr>`).join("");
+  }
+
+  /* sweeps */
+  const pis = []; for (let x = 1; x <= 70.0001; x += (x < 10 ? 0.25 : 1)) pis.push(x);
+  const famColor = t => heat((t - 900) / 1300);
+  const sets = T4_FAMILY.map(t => ({t, color:famColor(t), width:2}));
+  sets.push({t:T4, color:"var(--ink)", width:3.2, dash:"7 4", mine:true});
+  let wMax = 0, eMax = 0;
+  for (const S of sets) {
+    S.w = []; S.e = [];
+    for (const x of pis) {
+      const r = cycle(alt, V0, x, S.t, etac, etat, dpb);
+      const w = r.ok && r.wnet > 0 ? r.wnet / 1000 : null;
+      const e = r.ok && r.eth > 0 ? r.eth * 100 : null;
+      S.w.push([x, w]); S.e.push([x, e]);
+      if (w !== null) wMax = Math.max(wMax, w);
+      if (e !== null) eMax = Math.max(eMax, e);
+    }
+  }
+  const optima = key => sets.filter(S => !S.mine).map(S => {
+    let best = null; for (const p of S[key]) if (p[1] !== null && (!best || p[1] > best[1])) best = p;
+    return best ? {x:best[0], y:best[1], hollow:true, r:4, color:S.color} : null;
+  }).filter(Boolean);
+  const cur = key => cy.ok ? [{x:pic, y:key === "w" ? cy.wnet / 1000 : cy.eth * 100, r:5.5, color:"var(--ink)"}] : [];
+  drawPlot($("work"), {
+    xmin:1, xmax:70, ymin:0, ymax:niceCeil(wMax * 1.06 || 1),
+    xlabel:"Compressor pressure ratio", ylabel:"Specific work [kJ/kg]",
+    lines:sets.map(S => ({pts:S.w, color:S.color, width:S.width, dash:S.dash})),
+    markers:[...optima("w"), ...cur("w")]
+  });
+  drawPlot($("eff"), {
+    xmin:1, xmax:70, ymin:0, ymax:eMax > 0 ? niceCeil(eMax * 1.06) : 50,
+    xlabel:"Compressor pressure ratio", ylabel:"Thermal efficiency [%]",
+    lines:sets.map(S => ({pts:S.e, color:S.color, width:S.width, dash:S.dash})),
+    markers:[...optima("e"), ...cur("e")]
+  });
+
+  /* thermal efficiency vs T4 for several pressure ratios */
+  const t4s = []; for (let x = 800; x <= 2200.001; x += 25) t4s.push(x);
+  const prSets = PR_FAMILY.map((pr, i) => ({pr, color:PR_COLORS[i], width:2}));
+  prSets.push({pr:pic, color:"var(--ink)", width:3.2, dash:"7 4", mine:true});
+  let tMax = 0;
+  for (const S of prSets) {
+    S.e = t4s.map(x => {
+      const r = cycle(alt, V0, S.pr, x, etac, etat, dpb);
+      const e = r.ok && r.eth > 0 ? r.eth * 100 : null;
+      if (e !== null) tMax = Math.max(tMax, e);
+      return [x, e];
+    });
+  }
+  drawPlot($("efft4"), {
+    xmin:800, xmax:2200, ymin:0, ymax:tMax > 0 ? niceCeil(tMax * 1.06) : 50,
+    xlabel:"Turbine inlet temperature T₄ [K]", ylabel:"Thermal efficiency [%]",
+    lines:prSets.map(S => ({pts:S.e, color:S.color, width:S.width, dash:S.dash})),
+    markers:cy.ok ? [{x:T4, y:cy.eth * 100, r:5.5, color:"var(--ink)"}] : []
+  });
+  $("leg-efft4").innerHTML = prSets.map(S => `<span><i style="border-color:${S.color};${S.dash ? "border-top-style:dashed;" : ""}"></i>${S.mine ? `Your PR (${S.pr})` : `PR = ${S.pr}`}</span>`).join("");
+  const leg = sets.map(S => `<span><i style="border-color:${S.color};${S.dash ? "border-top-style:dashed;" : ""}"></i>${S.mine ? `Your T₄ (${S.t} K)` : `T₄ = ${S.t} K`}</span>`).join("");
+  $("leg-work").innerHTML = leg; $("leg-eff").innerHTML = leg;
+}
+const dlg = $("info");
+$("info-open").addEventListener("click", () => dlg.showModal());
+$("info-close").addEventListener("click", () => dlg.close());
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+let pending = false;
+function schedule() { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; render(); }); }
+window.addEventListener("resize", schedule);
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", schedule);
+render();
+</script>
+</body>
+</html>
