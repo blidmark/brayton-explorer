@@ -32,7 +32,7 @@ body{ margin:0; height:100%; overflow:hidden; background:var(--paper); color:var
 
 .app{ display:grid; grid-template-columns:clamp(172px, 30vw, 300px) minmax(0,1fr); height:100%; }
 aside{ overflow-y:auto; background:var(--panel); border-right:1px solid var(--line); padding:0.9rem 0.9rem 1.2rem; }
-main{ overflow-y:auto; padding:0.9rem clamp(0.6rem,2.5vw,1.6rem) 2rem; display:flex; flex-direction:column; gap:1rem; min-width:0; }
+main{ overflow-y:auto; padding:0.9rem clamp(0.6rem,2.5vw,1.6rem) 2rem; display:flex; flex-direction:column; gap:0.8rem; min-width:0; }
 h1{ font-family:var(--cond); font-weight:600; font-size:1.35rem; line-height:1.15; margin:0 0 0.2rem; }
 .fluid{ color:var(--muted); font-size:0.82rem; margin:0 0 0.9rem; padding-bottom:0.7rem; border-bottom:1px solid var(--grid); }
 
@@ -87,6 +87,35 @@ table.sleg{ min-width:0; width:auto; margin-top:0.4rem; }
 table.sleg td, table.sleg th{ text-align:left; padding:0.22rem 0.6rem 0.22rem 0; }
 table.sleg td:first-child{ width:1.6rem; }
 .sw{ display:inline-block; width:1.1rem; height:0.75rem; border-radius:3px; vertical-align:middle; }
+.toolbar{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:0.5rem 1rem; }
+.tgroup{ display:flex; flex-wrap:wrap; align-items:center; gap:0.35rem; }
+.tlabel{ font-size:0.85rem; color:var(--muted); margin-right:0.2rem; }
+.tbtn{ font:500 0.85rem var(--sans); color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:0.28rem 0.7rem; cursor:pointer; }
+.tbtn:hover{ border-color:var(--cold); }
+.seg .tbtn[aria-pressed="true"]{ background:var(--cold); border-color:var(--cold); color:#fff; }
+.grid{ display:grid; grid-template-columns:minmax(0,1fr); gap:1rem; align-items:start; }
+.grid.two{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+section.chart h2{ margin:0; }
+.sec-toggle{ display:flex; align-items:center; gap:0.45rem; width:100%; padding:0; margin:0; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.chev{ display:inline-block; width:0.9rem; color:var(--muted); transition:transform 0.15s; }
+.chev::before{ content:"▾"; }
+section.chart.collapsed .chev{ transform:rotate(-90deg); }
+section.chart.collapsed > :not(h2){ display:none !important; }
+#kpi{ display:flex; flex-direction:column; gap:0.75rem; margin-top:0.6rem; }
+.bb-head{ display:flex; justify-content:space-between; align-items:baseline; gap:0.5rem; }
+.bb-label{ font-size:0.9rem; font-weight:500; }
+.bb-val{ font:600 1.35rem/1.1 var(--cond); font-variant-numeric:tabular-nums; }
+.bb-track{ position:relative; height:14px; background:var(--grid); border-radius:7px; margin-top:0.25rem; }
+.bb-fill{ position:absolute; left:0; top:0; bottom:0; background:var(--cold); border-radius:7px; transition:width 0.12s; }
+.bb-mark{ position:absolute; top:-4px; bottom:-4px; width:3px; margin-left:-1.5px; border-radius:2px; }
+.mk{ display:inline-block; width:3px; height:12px; border-radius:2px; vertical-align:middle; margin-right:0.35rem; }
+.ideal{ background:var(--ink); }
+.nofan{ background:#C9A227; }
+.bb-ref{ font-size:0.78rem; color:var(--muted); margin-top:0.2rem; }
+.stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.5rem; margin-top:0.2rem; }
+.stat{ border:1px solid var(--grid); border-radius:8px; padding:0.45rem 0.6rem; }
+.stat .bb-val{ font-size:1.25rem; }
+.kpileg{ display:flex; flex-wrap:wrap; gap:0.3rem 1rem; font-size:0.8rem; color:var(--muted); margin-top:0.7rem; }
 .axisctl{ display:flex; flex-wrap:wrap; align-items:center; gap:0.3rem 0.7rem; margin:0.2rem 0 0.3rem 60px; font-size:0.85rem; }
 .axisctl label{ font-size:0.85rem; color:var(--muted); }
 .axisctl input[type=range]{ flex:1; min-width:120px; margin:0; }
@@ -156,16 +185,26 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
   </aside>
 
   <main>
-    <div class="results" aria-live="polite">
-      <div><div class="rlabel">Thermal efficiency</div><div class="rval" id="r-eth">–</div><div class="rsub">ΔKE / fuel heat</div></div>
-      <div><div class="rlabel">Propulsive efficiency</div><div class="rval" id="r-ep">–</div><div class="rsub">thrust power / ΔKE</div></div>
-      <div><div class="rlabel">Overall efficiency</div><div class="rval" id="r-eo">–</div><div class="rsub">thermal × propulsive</div></div>
-      <div><div class="rlabel">SFC</div><div class="rval" id="r-sfc">–</div><div class="rsub" id="r-sfc2">g/(kN·s)</div></div>
-      <div><div class="rlabel">Specific thrust</div><div class="rval" id="r-fs">–</div><div class="rsub" id="r-fs2">N per kg/s of air</div></div>
-      <div><div class="rlabel">Net thrust</div><div class="rval" id="r-fn">–</div><div class="rsub" id="r-fn2">kN</div></div>
+    <div class="toolbar">
+      <div class="tgroup">
+        <button type="button" class="tbtn" id="expand-all">Expand all</button>
+        <button type="button" class="tbtn" id="collapse-all">Collapse all</button>
+      </div>
+      <div class="tgroup seg" role="group" aria-label="Layout">
+        <span class="tlabel">Layout</span>
+        <button type="button" class="tbtn" data-layout="auto">Auto</button>
+        <button type="button" class="tbtn" data-layout="1">1 column</button>
+        <button type="button" class="tbtn" data-layout="2">2 columns</button>
+      </div>
     </div>
+    <div class="grid" id="grid">
+    <section class="chart" id="overviewSec">
+      <h2>Performance overview</h2>
+      <div id="kpi" aria-live="polite"></div>
+      <div class="kpileg"><span><i class="mk ideal"></i>Ideal cycle (same inputs, no losses)</span><span id="kpileg-nofan"><i class="mk nofan"></i>Same core without the fan</span></div>
+    </section>
 
-    <section class="chart">
+    <section class="chart" id="tsSec">
       <h2>T–s diagram</h2>
       <p>Solid line: the real cycle, colored by temperature. Dashed: ideal isentropic compression and expansion, and heat rejection to the atmosphere. Faint lines are isobars at ambient pressure and at p₃ (dotted: p₄, when there is a combustor pressure loss). They are drawn as air below the combustor temperatures and as combustion products above them. Products have higher cp, so at the same T and p they sit at higher entropy.</p>
       <svg class="plot" id="ts" role="img" aria-label="Temperature–entropy diagram of the cycle"></svg>
@@ -180,6 +219,29 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <p class="tnote">γ is the local value c<sub>p</sub>/(c<sub>p</sub> − R) at the station. γ̄ is the effective value over the isentropic step ending at that station (intake 0→2, compressor 2→3s, turbine 4→5s, nozzle 5→9), the exponent that makes T₂/T₁ = (p₂/p₁)<sup>(γ̄−1)/γ̄</sup> exact. Compare both with the textbook 1.4.</p>
     </section>
 
+
+    <section class="chart" id="perfSec">
+      <h2>Performance</h2>
+      <p>Thrust and flow values scale with inlet mass flow; specific values are per kg/s of air.</p>
+      <div class="tablewrap"><table id="perf" class="perf"></table></div>
+    </section>
+
+    <section class="chart" id="sankeySec">
+      <h2>Where the fuel power goes</h2>
+      <p>Band widths are proportional to power; percentages are of the fuel heat input. The turbine power loop is taken from the hot gas and handed back to the air in the compressor, so it circulates inside the engine and is not a loss.</p>
+      <svg class="plot" id="sankey" role="img" aria-label="Power flow diagram from fuel heat to thrust power and losses"></svg>
+      <div class="tablewrap"><table id="sankeyleg" class="sleg"></table></div>
+    </section>
+
+
+    <section class="chart" id="tradeSec">
+      <h2>Trade-off: overall efficiency vs specific thrust</h2>
+      <p id="trade-desc"></p>
+      <svg class="plot" id="trade" role="img" aria-label="Overall efficiency versus specific thrust"></svg>
+      <div class="legend" id="leg-trade"></div>
+    </section>
+
+
     <section class="chart" id="fanSec" hidden>
       <h2>Fan T–s diagram (bypass stream)</h2>
       <p>Air at flight conditions is slowed in the intake (0→2), compressed by the fan (2→13) and expanded in the separate fan nozzle back to ambient pressure (13→19). Dashed: ideal fan compression and heat rejection to the atmosphere.</p>
@@ -192,45 +254,33 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <div class="tablewrap"><table id="fanstates"></table></div>
     </section>
 
-    <section class="chart">
-      <h2>Performance</h2>
-      <p>Thrust and flow values scale with inlet mass flow; specific values are per kg/s of air.</p>
-      <div class="tablewrap"><table id="perf" class="perf"></table></div>
-    </section>
-
-    <section class="chart">
-      <h2>Where the fuel power goes</h2>
-      <p>Band widths are proportional to power; percentages are of the fuel heat input. The turbine power loop is taken from the hot gas and handed back to the air in the compressor, so it circulates inside the engine and is not a loss.</p>
-      <svg class="plot" id="sankey" role="img" aria-label="Power flow diagram from fuel heat to thrust power and losses"></svg>
-      <div class="tablewrap"><table id="sankeyleg" class="sleg"></table></div>
-    </section>
-
-    <section class="chart">
+    <section class="chart" id="workSec">
       <h2>Specific work vs pressure ratio</h2>
       <p>Kinetic energy added per kg of air: ((1+f)V₉² − V₀²) / 2. Open circles mark each curve's optimum. The filled dot is your current design.</p>
       <svg class="plot" id="work" role="img" aria-label="Specific work versus pressure ratio for several turbine inlet temperatures"></svg>
       <div class="legend" id="leg-work"></div>
     </section>
 
-    <section class="chart">
+    <section class="chart" id="effSec">
       <h2>Thermal efficiency vs pressure ratio</h2>
       <p>Kinetic energy added divided by fuel heat, for several T₄. Open circles mark each curve's optimum. The filled dot is your current design.</p>
       <svg class="plot" id="eff" role="img" aria-label="Thermal efficiency versus pressure ratio for several turbine inlet temperatures"></svg>
       <div class="legend" id="leg-eff"></div>
     </section>
 
-    <section class="chart">
+    <section class="chart" id="efft4Sec">
       <h2>Thermal efficiency vs turbine inlet temperature</h2>
       <p>For several pressure ratios, with all other inputs as set. Low T₄ is punished hardest by component losses; at high T₄ the curves flatten as real-gas effects and hotter exhaust take over.</p>
       <svg class="plot" id="efft4" role="img" aria-label="Thermal efficiency versus turbine inlet temperature for several pressure ratios"></svg>
       <div class="legend" id="leg-efft4"></div>
     </section>
-    <section class="chart">
+    <section class="chart" id="atmosSec">
       <h2>Atmosphere (ISA)</h2>
       <p>Standard-atmosphere temperature and pressure versus altitude. Temperature falls 6.5 K per km up to 11 km, then stays at 216.65 K; pressure keeps falling. The dashed line marks your altitude.</p>
       <svg class="plot" id="atmos" role="img" aria-label="ISA temperature and pressure versus altitude"></svg>
       <div class="legend"><span><i style="border-color:var(--hot)"></i>Temperature (bottom axis)</span><span><i style="border-color:var(--cold)"></i>Pressure (top axis)</span></div>
     </section>
+    </div>
   </main>
 </div>
 
@@ -245,6 +295,9 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
     <h3>How to use it</h3>
     <ul>
       <li>Drag a slider or type a number in its box. Every value and chart updates immediately.</li>
+      <li>Click a section title to fold it away; folded sections are not recalculated, so dragging stays smooth. <b>Expand all / Collapse all</b> and the <b>Layout</b> buttons (Auto, 1 or 2 columns) are at the top. Auto switches to two columns on wide screens. The page remembers your choices in this browser.</li>
+      <li>The <b>performance overview</b> shows the main results as bars. The black tick marks the same engine with no losses (ideal cycle); with the fan on, a gold tick marks the same core without the fan.</li>
+      <li>The <b>trade-off chart</b> plots overall efficiency against specific thrust. Low specific thrust means a big, slow jet (efficient but a large engine); high specific thrust means a small, fast jet. Your design is the black dot.</li>
       <li>Tick the <b>fan</b> box at the bottom of the inputs to turn the turbojet into a separate-flow turbofan, then set the bypass ratio, fan pressure ratio and fan efficiency. The mass-flow slider then sets the core flow. A fan T–s diagram appears, and the performance table splits into engine, core and fan columns, with a comparison against the same core without the fan.</li>
       <li>Press <b>Ideal cycle</b> to make the compressor, turbine, fan and combustor loss-free. Their sliders are greyed out until you press it again. This shows how much the losses cost.</li>
       <li>If a combination cannot make a working engine, a red message explains why. A common case is a turbine inlet temperature lower than the compressor exit temperature.</li>
@@ -664,8 +717,8 @@ function niceCeil(v) {
 }
 let clipN = 0;
 function drawPlot(svg, c) {
-  const W = Math.max(320, Math.min(900, svg.parentElement.clientWidth - 2));
-  const H = Math.round(Math.max(260, Math.min(c.maxH || 420, W * (c.aspect || 0.56))));
+  const W = Math.max(320, Math.min(2400, svg.parentElement.clientWidth - 2));
+  const H = Math.round(Math.max(260, Math.min(c.maxH || 520, W * (c.aspect || 0.56), window.innerHeight * 0.46)));
   const m = {l:60, r:c.y2 ? 62 : 16, t:c.x2 ? 46 : 12, b:46}, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const X = x => m.l + (x - c.xmin) / (c.xmax - c.xmin) * pw, Xp = X;
   const X2 = c.x2 ? (x => m.l + (x - c.x2.min) / (c.x2.max - c.x2.min) * pw) : X;
@@ -685,7 +738,10 @@ function drawPlot(svg, c) {
   if (c.y2) for (const v of niceTicks(c.y2.min, c.y2.max, ny)) s += `<text x="${m.l + pw + 7}" y="${Y2(v) + 4}" text-anchor="start">${fmt(v)}</text>`;
   s += `<rect class="frame" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/><g clip-path="url(#${id})">`;
   for (const v of c.hlines || []) s += `<line x1="${m.l}" x2="${m.l + pw}" y1="${Yp(v.y)}" y2="${Yp(v.y)}" style="stroke:var(--ink);stroke-width:1.2;stroke-dasharray:4 4"/>`;
-  for (const v of c.vlines || []) s += `<line x1="${X(v.x)}" x2="${X(v.x)}" y1="${m.t}" y2="${m.t + ph}" style="stroke:var(--ink);stroke-width:1.2;stroke-dasharray:4 4"/>`;
+  for (const v of c.vlines || []) {
+    s += `<line x1="${X(v.x)}" x2="${X(v.x)}" y1="${m.t}" y2="${m.t + ph}" style="stroke:${v.color || "var(--ink)"};stroke-width:${v.width || 1.2};stroke-dasharray:${v.dash || "4 4"}"/>`;
+    if (v.label) s += `<text x="${X(v.x) + 4}" y="${m.t + 14}" style="font-size:11px">${v.label}</text>`;
+  }
   for (const L of c.lines) {
     const Y = L.y2 ? Y2 : Yp, X = L.x2 ? X2 : Xp;
     const st = `stroke-width:${L.width || 2};${L.dash ? `stroke-dasharray:${L.dash};` : ""}fill:none;stroke-linecap:round;stroke-linejoin:round;`;
@@ -736,8 +792,8 @@ function path(cy, Ta, pa, Tb, pb, fa = 0, fb = fa, n = 40) {
 
 /* ---------- power-flow (Sankey) diagram ---------- */
 function drawSankey(svg, cy, mdot, V0) {
-  const W = Math.max(320, Math.min(900, svg.parentElement.clientWidth - 2));
-  const H = Math.round(Math.max(320, Math.min(480, W * 0.62)));
+  const W = Math.max(320, Math.min(2400, svg.parentElement.clientWidth - 2));
+  const H = Math.round(Math.max(320, Math.min(500, W * 0.62, window.innerHeight * 0.5)));
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const leg = document.getElementById("sankeyleg");
   const bad = !cy.ok || cy.dKEc < 0 || cy.dKEf < 0 || cy.Fs < 0;
@@ -932,6 +988,130 @@ function perfTableFan(cy, cj, mdot, V0) {
       rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join("")).join("") + cmp;
 }
 
+/* ---------- layout: collapsible sections and column toggle ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
+};
+const collapsedSet = new Set(store.get("be-collapsed", []));
+let layoutMode = store.get("be-layout", "auto");
+function isOpen(id) { const el = document.getElementById(id); return !!el && !el.hidden && !el.classList.contains("collapsed"); }
+function initSections() {
+  document.querySelectorAll("#grid > section.chart").forEach(sec => {
+    const h = sec.querySelector("h2");
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "sec-toggle";
+    btn.innerHTML = `<span class="chev" aria-hidden="true"></span><span>${h.innerHTML}</span>`;
+    h.innerHTML = ""; h.appendChild(btn);
+    sec._setCollapsed = c => {
+      sec.classList.toggle("collapsed", c); btn.setAttribute("aria-expanded", String(!c));
+      c ? collapsedSet.add(sec.id) : collapsedSet.delete(sec.id);
+    };
+    sec._setCollapsed(collapsedSet.has(sec.id));
+    btn.addEventListener("click", () => { sec._setCollapsed(!sec.classList.contains("collapsed")); store.set("be-collapsed", [...collapsedSet]); schedule(); });
+  });
+  const all = c => { document.querySelectorAll("#grid > section.chart").forEach(sec => sec._setCollapsed(c)); store.set("be-collapsed", [...collapsedSet]); schedule(); };
+  document.getElementById("expand-all").addEventListener("click", () => all(false));
+  document.getElementById("collapse-all").addEventListener("click", () => all(true));
+  document.querySelectorAll("[data-layout]").forEach(b => b.addEventListener("click", () => {
+    layoutMode = b.dataset.layout; store.set("be-layout", layoutMode); schedule();
+  }));
+}
+function applyLayout() {
+  const grid = document.getElementById("grid");
+  const cols = layoutMode === "2" ? 2 : layoutMode === "1" ? 1 : (grid.clientWidth >= 1400 ? 2 : 1);
+  grid.classList.toggle("two", cols === 2);
+  document.querySelectorAll("[data-layout]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.layout === layoutMode)));
+}
+
+/* ---------- performance overview (bullet bars) ---------- */
+function drawOverview(cy, cj, ci, mdot, V0, fanOn) {
+  const box = document.getElementById("kpi");
+  document.getElementById("kpileg-nofan").hidden = !fanOn;
+  if (!cy.ok) { box.innerHTML = `<p class="msg">${cy.msg}</p>`; return; }
+  const FS_MAX = 1500;
+  const fsT = c => c && c.ok ? c.Fs / (1 + (c.bpr || 0)) : NaN;
+  const refs = (get, fmt) => {
+    const out = [];
+    if (ci && ci.ok) out.push({cls:"ideal", v:get(ci), t:`ideal ${fmt(get(ci))}`});
+    if (fanOn && cj && cj.ok) out.push({cls:"nofan", v:get(cj), t:`no fan ${fmt(get(cj))}`});
+    return out;
+  };
+  const p1 = x => (100 * x).toFixed(1) + " %";
+  const bar = (label, v, frac, fmt, rs, fracOf) => {
+    const clamp = x => Math.max(0, Math.min(100, x * 100));
+    const marks = rs.filter(r => isFinite(r.v)).map(r => `<span class="bb-mark ${r.cls}" style="left:${clamp(fracOf(r.v))}%" title="${r.t}"></span>`).join("");
+    return `<div class="bb-row"><div class="bb-head"><span class="bb-label">${label}</span><span class="bb-val">${fmt(v)}</span></div>
+      <div class="bb-track"><div class="bb-fill" style="width:${clamp(frac)}%"></div>${marks}</div>
+      <div class="bb-ref">${rs.map(r => r.t).join(", ")}</div></div>`;
+  };
+  const fsFmt = x => isFinite(x) ? x.toFixed(0) + " N·s/kg" : "–";
+  let h = "";
+  h += bar("Thermal efficiency", cy.eth, cy.eth, p1, refs(c => c.eth, p1), x => x);
+  h += bar("Propulsive efficiency", cy.ep, cy.ep, p1, refs(c => c.ep, p1), x => x);
+  h += bar("Overall efficiency", cy.eo, cy.eo, p1, refs(c => c.eo, p1), x => x);
+  h += bar(`Specific thrust <span class="bb-ref">(${fanOn ? "per kg/s of total air, " : ""}scale 0–${FS_MAX})</span>`, fsT(cy), fsT(cy) / FS_MAX, fsFmt, refs(fsT, fsFmt), x => x / FS_MAX);
+  const stat = (label, val, unit, rs) => `<div class="stat"><div class="bb-label">${label}</div><div class="bb-val">${val} <span class="bb-ref">${unit}</span></div><div class="bb-ref">${rs}</div></div>`;
+  const sfc = c => c && c.ok && isFinite(c.sfc) ? (c.sfc * 1e6).toFixed(1) : "–";
+  const fn = c => c && c.ok ? (mdot * c.Fs / 1000).toFixed(1) : "–";
+  const ff = c => c && c.ok ? (mdot * c.f).toFixed(3) : "–";
+  const rtxt = g => [ci && ci.ok ? `ideal ${g(ci)}` : "", fanOn && cj && cj.ok ? `no fan ${g(cj)}` : ""].filter(Boolean).join(", ");
+  h += `<div class="stats">
+    ${stat("SFC", sfc(cy), "g/(kN·s)", rtxt(sfc))}
+    ${stat("Net thrust", fn(cy), "kN", fanOn ? `core ${(mdot * cy.Fsc / 1000).toFixed(1)}, fan ${(mdot * cy.Fsf / 1000).toFixed(1)}` : rtxt(fn))}
+    ${stat("Fuel flow", ff(cy), "kg/s", rtxt(ff))}
+  </div>`;
+  box.innerHTML = h;
+}
+
+/* ---------- trade-off map ---------- */
+const BPR_FAMILY = [1, 3, 6, 10, 15];
+function drawTrade(cy, cj, P) {
+  const svg = document.getElementById("trade");
+  const desc = document.getElementById("trade-desc");
+  const fsT = c => c.Fs / (1 + (c.bpr || 0));
+  let sets = [], xMax = 0, yMax = 0;
+  const add = (S, c) => { if (c.ok && c.eo > 0 && c.Fs > 0) { const x = fsT(c), y = c.eo * 100; S.pts.push([x, y]); xMax = Math.max(xMax, x); yMax = Math.max(yMax, y); } else S.pts.push([0, null]); };
+  if (P.fanOn) {
+    desc.textContent = "Each curve varies the fan pressure ratio from 1.05 (lower left, slow bypass jet) upwards at a fixed bypass ratio, with your core settings. Open circles mark the best fan pressure ratio; beyond it the fan starves the core jet and the curve turns back on itself until the core runs out of pressure. Faint vertical lines show propulsive efficiency for a single jet at your flight speed. Moving left trades engine size (low specific thrust) for efficiency.";
+    const fprs = []; for (let x = 1.05; x <= 3.0001; x += 0.05) fprs.push(x);
+    sets = BPR_FAMILY.map((b, i) => ({lab:`BPR = ${b}`, color:PR_COLORS[i], width:2, b, pts:[]}));
+    sets.push({lab:`Your BPR (${P.bprU})`, color:"var(--ink)", width:3, dash:"7 4", b:P.bprU, pts:[]});
+    for (const S of sets) for (const f of fprs) add(S, cycle(P.alt, P.V0, P.pic, P.T4, P.etac, P.etat, P.dpb, S.b, f, P.etafU));
+  } else {
+    desc.textContent = "Each curve varies the compressor pressure ratio from 2 to 70 at a fixed turbine inlet temperature. Faint vertical lines show propulsive efficiency at your flight speed. Open circles mark the most efficient pressure ratio on each curve. Hotter cycles give more specific thrust (a smaller engine) but a faster, less efficient jet. Tick the fan option to see how a turbofan moves to the left.";
+    const prs = []; for (let x = 2; x <= 70.0001; x += (x < 10 ? 0.5 : 2)) prs.push(x);
+    sets = T4_FAMILY.map(t => ({lab:`T₄ = ${t} K`, color:heat((t - 900) / 1300), width:2, t, pts:[]}));
+    sets.push({lab:`Your T₄ (${P.T4} K)`, color:"var(--ink)", width:3, dash:"7 4", t:P.T4, pts:[]});
+    for (const S of sets) for (const pr of prs) add(S, cycle(P.alt, P.V0, pr, S.t, P.etac, P.etat, P.dpb));
+  }
+  if (cy.ok && cy.eo > 0) { xMax = Math.max(xMax, fsT(cy)); yMax = Math.max(yMax, cy.eo * 100); }
+  if (P.fanOn && cj && cj.ok && cj.eo > 0) { xMax = Math.max(xMax, fsT(cj)); yMax = Math.max(yMax, cj.eo * 100); }
+  const xmax = niceCeil((xMax || 1000) * 1.06), ymax = niceCeil((yMax || 40) * 1.1);
+  const vl = [];
+  if (P.V0 > 0) for (const e of [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]) {
+    const x = P.V0 * (2 / e - 2);
+    if (x > 0 && x < xmax * 0.97) vl.push({x, color:"var(--line)", width:1, dash:"3 4", label:`η<tspan dy="3" style="font-size:9px">p</tspan><tspan dy="-3"> ${Math.round(e * 100)} %</tspan>`});
+  }
+  const markers = [];
+  for (const S of sets) if (!S.dash) {
+    let best = null; for (const q of S.pts) if (q[1] !== null && (!best || q[1] > best[1])) best = q;
+    if (best) markers.push({x:best[0], y:best[1], hollow:true, r:4, color:S.color});
+  }
+  if (P.fanOn && cj && cj.ok && cj.eo > 0) markers.push({x:fsT(cj), y:cj.eo * 100, hollow:true, r:5, color:"#C9A227", label:"no fan", dx:8, dy:-6});
+  if (cy.ok && cy.eo > 0) markers.push({x:fsT(cy), y:cy.eo * 100, r:5.5, color:"var(--ink)"});
+  drawPlot(svg, {
+    xmin:0, xmax, ymin:0, ymax,
+    xlabel:P.fanOn ? "Specific thrust [N·s/kg of total air]" : "Specific thrust [N·s/kg]", ylabel:"Overall efficiency [%]",
+    vlines:vl,
+    lines:sets.map(S => ({pts:S.pts, color:S.color, width:S.width, dash:S.dash})),
+    markers,
+    note:P.V0 > 0 ? "" : "Overall efficiency is zero at zero flight speed. Set a flight speed above 0."
+  });
+  document.getElementById("leg-trade").innerHTML = sets.map(S => `<span><i style="border-color:${S.color};${S.dash ? "border-top-style:dashed;" : ""}"></i>${S.lab}</span>`).join("") +
+    (P.fanOn ? `<span><i style="border-color:#C9A227"></i>Same core without the fan</span>` : "");
+}
+
 /* ---------- render ---------- */
 function perfTable(cy, mdot, V0) {
   const dash = "–", ok = cy.ok;
@@ -1001,26 +1181,21 @@ function render() {
   $("h-t4").textContent = cy.f !== undefined ? `Fuel–air ratio ${cy.f.toFixed(4)}` + (cy.ok ? `, cp ${(cy.cp4 / 1000).toFixed(3)} kJ/(kg·K)` : "") : "";
   $("h-etat").textContent = cy.ok ? `T₅ = ${cy.T5.toFixed(0)} K, jet velocity V₉ = ${cy.V9.toFixed(0)} m/s` : "";
 
-  if (cy.ok) {
-    $("r-eth").textContent = pct(cy.eth);
-    $("r-ep").textContent = V0 > 0 ? pct(cy.ep) : "0 %";
-    $("r-eo").textContent = pct(cy.eo);
-    $("r-sfc").textContent = isFinite(cy.sfc) ? (cy.sfc * 1e6).toFixed(1) : "–";
-    $("r-sfc2").textContent = isFinite(cy.sfc) ? `g/(kN·s), ${(cy.sfc * 3600 * 9.80665).toFixed(3)} lb/(lbf·h)` : "no positive thrust";
-    $("r-fs").textContent = (cy.Fs / (1 + cy.bpr)).toFixed(0);
-    $("r-fn").textContent = (mdot * cy.Fs / 1000).toFixed(1);
-  } else {
-    for (const k of ["r-eth", "r-ep", "r-eo", "r-sfc", "r-fs", "r-fn"]) $(k).textContent = "–";
-    $("r-sfc2").textContent = "g/(kN·s)";
+  applyLayout();
+  if (isOpen("overviewSec")) {
+    const ci = cycle(alt, V0, pic, T4, 1, 1, 0, bprU, fprU, 1);   // ideal reference
+    drawOverview(cy, cj, ci, mdot, V0, fanOn);
   }
-  $("r-fs2").textContent = fanOn ? "N per kg/s of total air" : "N per kg/s of air";
-  $("r-fn2").textContent = fanOn && cy.ok ? `kN (core ${(mdot * cy.Fsc / 1000).toFixed(1)}, fan ${(mdot * cy.Fsf / 1000).toFixed(1)})` : "kN";
-  $("perf").innerHTML = fanOn ? perfTableFan(cy, cj, mdot, V0) : perfTable(cy, mdot, V0);
-  $("perf").className = fanOn ? "perf4" : "perf";
-  drawSankey($("sankey"), cy, mdot, V0);
-  if (fanOn) drawFanTs(cy);
+  if (isOpen("perfSec")) {
+    $("perf").innerHTML = fanOn ? perfTableFan(cy, cj, mdot, V0) : perfTable(cy, mdot, V0);
+    $("perf").className = fanOn ? "perf4" : "perf";
+  }
+  if (isOpen("sankeySec")) drawSankey($("sankey"), cy, mdot, V0);
+  if (fanOn && isOpen("fanSec")) drawFanTs(cy);
+  if (isOpen("tradeSec")) drawTrade(cy, cj, {alt, V0, pic, T4, etac, etat, dpb, bprU, fprU, etafU, fanOn});
 
   /* atmosphere */
+  if (isOpen("atmosSec")) {
   const aT = [], aP = [];
   for (let h = 0; h <= 15.0001; h += 0.25) { const a = isa(h); aT.push([a.T, h]); aP.push([a.p / 1000, h]); }
   const nearTop = alt > 13.5, nearBottom = alt < 1.5;
@@ -1034,10 +1209,12 @@ function render() {
       {x:cy.p0 / 1000, y:alt, x2:true, color:"var(--cold)", r:5, label:`p₀ ${(cy.p0 / 1000).toFixed(1)} kPa`, dx:9, dy:nearTop ? 18 : -8}
     ]
   });
+  }
 
   /* T–s */
   const msg = $("ts-msg"), tsSvg = $("ts");
-  if (!cy.ok) {
+  if (!isOpen("tsSec")) { /* collapsed */ }
+  else if (!cy.ok) {
     msg.hidden = false; msg.textContent = cy.msg;
     drawPlot(tsSvg, {xmin:-0.07 * smaxVal(), xmax:smaxVal(), ymin:100, ymax:2300, xlabel:"Entropy s − s₀ [kJ/(kg·K)]", ylabel:"Temperature T [K]", lines:[], note:"No working cycle with these inputs"});
     $("states").innerHTML = "";
@@ -1110,6 +1287,7 @@ function render() {
   }
 
   /* sweeps */
+  if (isOpen("workSec") || isOpen("effSec")) {
   const pis = []; for (let x = 1; x <= 70.0001; x += (x < 10 ? 0.25 : 1)) pis.push(x);
   const famColor = t => heat((t - 900) / 1300);
   const sets = T4_FAMILY.map(t => ({t, color:famColor(t), width:2}));
@@ -1144,7 +1322,12 @@ function render() {
     markers:[...optima("e"), ...cur("e")]
   });
 
+  const leg = sets.map(S => `<span><i style="border-color:${S.color};${S.dash ? "border-top-style:dashed;" : ""}"></i>${S.mine ? `Your T₄ (${S.t} K)` : `T₄ = ${S.t} K`}</span>`).join("");
+  $("leg-work").innerHTML = leg; $("leg-eff").innerHTML = leg;
+  }
+
   /* thermal efficiency vs T4 for several pressure ratios */
+  if (isOpen("efft4Sec")) {
   const t4s = []; for (let x = 800; x <= 2200.001; x += 25) t4s.push(x);
   const prSets = PR_FAMILY.map((pr, i) => ({pr, color:PR_COLORS[i], width:2}));
   prSets.push({pr:pic, color:"var(--ink)", width:3.2, dash:"7 4", mine:true});
@@ -1164,13 +1347,13 @@ function render() {
     markers:cy.ok ? [{x:T4, y:cy.eth * 100, r:5.5, color:"var(--ink)"}] : []
   });
   $("leg-efft4").innerHTML = prSets.map(S => `<span><i style="border-color:${S.color};${S.dash ? "border-top-style:dashed;" : ""}"></i>${S.mine ? `Your PR (${S.pr})` : `PR = ${S.pr}`}</span>`).join("");
-  const leg = sets.map(S => `<span><i style="border-color:${S.color};${S.dash ? "border-top-style:dashed;" : ""}"></i>${S.mine ? `Your T₄ (${S.t} K)` : `T₄ = ${S.t} K`}</span>`).join("");
-  $("leg-work").innerHTML = leg; $("leg-eff").innerHTML = leg;
+  }
 }
 const dlg = $("info");
 $("info-open").addEventListener("click", () => dlg.showModal());
 $("info-close").addEventListener("click", () => dlg.close());
 dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+initSections();
 let pending = false;
 function schedule() { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; render(); }); }
 window.addEventListener("resize", schedule);
