@@ -74,6 +74,19 @@ table.coef{ min-width:0; font-size:0.82rem; margin:0.4rem 0; }
 table.coef td, table.coef th{ text-align:right !important; padding:0.15rem 0.5rem; }
 .tnote{ font-size:0.78rem; color:var(--muted); margin:0.4rem 0 0; max-width:90ch; }
 .dlg-body h4{ font-size:0.95rem; margin:0.9rem 0 0.2rem; }
+.check{ display:flex; gap:0.55rem; align-items:flex-start; font-size:0.88rem; font-weight:500; line-height:1.3; margin:0.4rem 0 0.8rem; padding-top:0.8rem; border-top:1px solid var(--grid); cursor:pointer; }
+.check input{ width:1.1rem; height:1.1rem; margin:0.1rem 0 0; accent-color:var(--cold); flex:none; }
+#fanctl{ border-left:3px solid #4FA3A5; padding-left:0.6rem; margin-bottom:0.6rem; }
+table.perf4{ min-width:560px; }
+table.perf4 td:nth-child(n+2):nth-child(-n+4), table.perf4 th.r{ text-align:right; }
+table.perf4 td:nth-child(2){ font-weight:600; }
+table.perf4 td:nth-child(5){ color:var(--muted); }
+table.perf4 tr.grp td{ padding-top:0.7rem; font:600 0.95rem var(--cond); color:var(--ink); border-bottom:1px solid var(--line); text-align:left; }
+table.perf4 td.chg{ text-align:left !important; color:#2E8B57; font-weight:500; }
+table.sleg{ min-width:0; width:auto; margin-top:0.4rem; }
+table.sleg td, table.sleg th{ text-align:left; padding:0.22rem 0.6rem 0.22rem 0; }
+table.sleg td:first-child{ width:1.6rem; }
+.sw{ display:inline-block; width:1.1rem; height:0.75rem; border-radius:3px; vertical-align:middle; }
 .axisctl{ display:flex; flex-wrap:wrap; align-items:center; gap:0.3rem 0.7rem; margin:0.2rem 0 0.3rem 60px; font-size:0.85rem; }
 .axisctl label{ font-size:0.85rem; color:var(--muted); }
 .axisctl input[type=range]{ flex:1; min-width:120px; margin:0; }
@@ -125,8 +138,10 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
     <p class="fluid">Working fluid: air with temperature-dependent cp, then kerosene combustion products after the burner.</p>
     <button type="button" class="infobtn" id="info-open"><span aria-hidden="true">i</span>User guide</button>
     <button type="button" class="idealbtn" id="ideal" aria-pressed="false"><span class="dot" aria-hidden="true"></span>Ideal cycle</button>
-    <p class="hint idealhint">Sets compressor and turbine efficiency to 100 % and combustor pressure loss to 0. Press again to restore your values.</p>
+    <p class="hint idealhint">Sets compressor, turbine and fan efficiency to 100 % and combustor pressure loss to 0. Press again to restore your values.</p>
     <div id="controls"></div>
+    <label class="check"><input type="checkbox" id="fan"><span>Use part of the useful work to drive a fan exhausting through a separate (unmixed) nozzle</span></label>
+    <div id="fanctl" hidden></div>
     <details>
       <summary>Model assumptions</summary>
       <ul>
@@ -146,7 +161,7 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <div><div class="rlabel">Propulsive efficiency</div><div class="rval" id="r-ep">–</div><div class="rsub">thrust power / ΔKE</div></div>
       <div><div class="rlabel">Overall efficiency</div><div class="rval" id="r-eo">–</div><div class="rsub">thermal × propulsive</div></div>
       <div><div class="rlabel">SFC</div><div class="rval" id="r-sfc">–</div><div class="rsub" id="r-sfc2">g/(kN·s)</div></div>
-      <div><div class="rlabel">Specific thrust</div><div class="rval" id="r-fs">–</div><div class="rsub">N per kg/s of air</div></div>
+      <div><div class="rlabel">Specific thrust</div><div class="rval" id="r-fs">–</div><div class="rsub" id="r-fs2">N per kg/s of air</div></div>
       <div><div class="rlabel">Net thrust</div><div class="rval" id="r-fn">–</div><div class="rsub" id="r-fn2">kN</div></div>
     </div>
 
@@ -165,6 +180,18 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <p class="tnote">γ is the local value c<sub>p</sub>/(c<sub>p</sub> − R) at the station. γ̄ is the effective value over the isentropic step ending at that station (intake 0→2, compressor 2→3s, turbine 4→5s, nozzle 5→9), the exponent that makes T₂/T₁ = (p₂/p₁)<sup>(γ̄−1)/γ̄</sup> exact. Compare both with the textbook 1.4.</p>
     </section>
 
+    <section class="chart" id="fanSec" hidden>
+      <h2>Fan T–s diagram (bypass stream)</h2>
+      <p>Air at flight conditions is slowed in the intake (0→2), compressed by the fan (2→13) and expanded in the separate fan nozzle back to ambient pressure (13→19). Dashed: ideal fan compression and heat rejection to the atmosphere.</p>
+      <svg class="plot" id="tsfan" role="img" aria-label="Temperature–entropy diagram of the fan stream"></svg>
+      <div class="axisctl">
+        <label for="r-smaxf">Entropy axis max</label>
+        <input type="range" id="r-smaxf" min="0.01" max="0.25" step="0.005" value="0.05">
+        <span class="num"><input type="number" id="n-smaxf" min="0.01" max="0.25" step="any" value="0.05" inputmode="decimal" aria-label="Fan entropy axis max"><span class="unit">kJ/(kg·K)</span></span>
+      </div>
+      <div class="tablewrap"><table id="fanstates"></table></div>
+    </section>
+
     <section class="chart">
       <h2>Performance</h2>
       <p>Thrust and flow values scale with inlet mass flow; specific values are per kg/s of air.</p>
@@ -175,6 +202,7 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <h2>Where the fuel power goes</h2>
       <p>Band widths are proportional to power; percentages are of the fuel heat input. The turbine power loop is taken from the hot gas and handed back to the air in the compressor, so it circulates inside the engine and is not a loss.</p>
       <svg class="plot" id="sankey" role="img" aria-label="Power flow diagram from fuel heat to thrust power and losses"></svg>
+      <div class="tablewrap"><table id="sankeyleg" class="sleg"></table></div>
     </section>
 
     <section class="chart">
@@ -217,7 +245,8 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
     <h3>How to use it</h3>
     <ul>
       <li>Drag a slider or type a number in its box. Every value and chart updates immediately.</li>
-      <li>Press <b>Ideal cycle</b> to make the compressor, turbine and combustor loss-free. Their sliders are greyed out until you press it again. This shows how much the losses cost.</li>
+      <li>Tick the <b>fan</b> box at the bottom of the inputs to turn the turbojet into a separate-flow turbofan, then set the bypass ratio, fan pressure ratio and fan efficiency. The mass-flow slider then sets the core flow. A fan T–s diagram appears, and the performance table splits into engine, core and fan columns, with a comparison against the same core without the fan.</li>
+      <li>Press <b>Ideal cycle</b> to make the compressor, turbine, fan and combustor loss-free. Their sliders are greyed out until you press it again. This shows how much the losses cost.</li>
       <li>If a combination cannot make a working engine, a red message explains why. A common case is a turbine inlet temperature lower than the compressor exit temperature.</li>
       <li>In the charts with several curves, only one input is varied and all the others stay at your settings. The black dashed curve and black dot always show your current design.</li>
     </ul>
@@ -230,6 +259,8 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <tr><td>4</td><td>Turbine entry, just after the combustor: hottest point</td></tr>
       <tr><td>5</td><td>Turbine exit</td></tr>
       <tr><td>9</td><td>Nozzle exit: the jet leaves at outside air pressure</td></tr>
+      <tr><td>13</td><td>Fan exit (turbofan only)</td></tr>
+      <tr><td>19</td><td>Fan nozzle exit (turbofan only): the bypass jet leaves at outside air pressure</td></tr>
     </table>
 
     <h3>Reading the T–s diagram</h3>
@@ -251,13 +282,15 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <tr><td>Gross thrust</td><td>Push from the jet leaving the nozzle.</td></tr>
       <tr><td>Ram drag</td><td>Drag from accelerating the incoming air up to the aircraft's speed.</td></tr>
       <tr><td>Net thrust</td><td>Gross thrust minus ram drag: the force that actually moves the aircraft.</td></tr>
+      <tr><td>Bypass ratio (BPR)</td><td>Bypass air per kg of core air. More bypass air at a lower jet speed raises propulsive efficiency.</td></tr>
+      <tr><td>Fan pressure ratio (FPR)</td><td>Pressure rise across the fan. It sets the bypass jet speed.</td></tr>
     </table>
 
     <h3>Where the fuel power goes</h3>
-    <p>The power-flow diagram starts with all the fuel heat (100 %). Part leaves as heat in the hot exhaust. The rest becomes jet power, of which only part becomes thrust power; the remainder is kinetic energy left behind in the jet. The loop shows the turbine power handed back to the compressor. It is large, often more than half the fuel power, but it circulates inside the engine and is not lost.</p>
+    <p>The power-flow diagram starts with all the fuel heat (100 %). Part leaves as heat in the hot exhaust. The rest becomes jet power, of which only part becomes thrust power; the remainder is kinetic energy left behind in the jet. The loop shows the turbine power handed back to the compressor. It is large, often more than half the fuel power, but it circulates inside the engine and is not lost. With a fan, part of the core's useful power is sent to the fan; most of it becomes bypass jet power and a small part is lost as fan inefficiency.</p>
 
     <h3>How the numbers are calculated</h3>
-    <p>Tap a step to open it. The steps run in the same order as the program, and each uses results from the ones before. Values are per kg of air unless stated. R = 287.05 J/(kg·K).</p>
+    <p>Tap a step to open it. The steps run in the same order as the program, and each uses results from the ones before. Values are per kg of (core) air unless stated. R = 287.05 J/(kg·K).</p>
 
     <details>
       <summary>1. Outside air and flight condition</summary>
@@ -332,54 +365,68 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
     </details>
 
     <details>
-      <summary>6. Turbine</summary>
-      <p>The turbine takes exactly the compressor work out of the gas (1+<var>f</var> kg per kg of air), which fixes <var>T</var><sub>5</sub>. A real turbine needs a bigger pressure drop than a perfect one for the same work.</p>
-      <div class="eq"><span class="eqn">(6.1)</span><var>h</var><sub>4</sub> = <var>h</var><sub>g</sub>(<var>T</var><sub>4</sub>,<var>f</var>)</div>
-      <div class="eq"><span class="eqn">(6.2)</span><var>h</var><sub>5</sub> = <var>h</var><sub>4</sub> − <var>w</var><sub>c</sub>/(1+<var>f</var>)&emsp;→&emsp;<var>T</var><sub>5</sub></div>
-      <div class="eq"><span class="eqn">(6.3)</span><var>h</var><sub>5s</sub> = <var>h</var><sub>4</sub> − (<var>h</var><sub>4</sub> − <var>h</var><sub>5</sub>)/η<sub>t</sub>&emsp;→&emsp;<var>T</var><sub>5s</sub></div>
-      <div class="eq"><span class="eqn">(6.4)</span><var>p</var><sub>5</sub> = <var>p</var><sub>4</sub>·exp{[<var>φ</var><sub>g</sub>(<var>T</var><sub>5s</sub>) − <var>φ</var><sub>g</sub>(<var>T</var><sub>4</sub>)]/<var>R</var>}</div><div class="eq"><span class="eqn">(6.4′)</span>Same in familiar form:&emsp;<var>T</var><sub>5s</sub>/<var>T</var><sub>4</sub> = (<var>p</var><sub>5</sub>/<var>p</var><sub>4</sub>)<sup>(γ̄−1)/γ̄</sup>,&emsp;γ̄ over <var>T</var><sub>5s</sub>…<var>T</var><sub>4</sub> for products</div>
-      <p>A working cycle needs <var>p</var><sub>5</sub> &gt; <var>p</var><sub>0</sub>, otherwise nothing is left to drive the jet.</p>
+      <summary>6. Fan and bypass nozzle (turbofan option only)</summary>
+      <p>When the fan box is ticked, part of the turbine power drives a fan. The fan compresses a separate stream of bypass air, BPR kg for every kg of core air, which leaves through its own nozzle without mixing with the hot core gas. The fan has its own isentropic efficiency η<sub>f</sub>. With the box unticked, BPR = 0 and this step is skipped.</p>
+      <div class="eq"><span class="eqn">(6.1)</span><var>φ</var><sub>a</sub>(<var>T</var><sub>13s</sub>) = <var>φ</var><sub>a</sub>(<var>T</var><sub>2</sub>) + <var>R</var>·ln FPR&emsp;→&emsp;<var>T</var><sub>13s</sub></div>
+      <div class="eq"><span class="eqn">(6.1′)</span>Same in familiar form:&emsp;<var>T</var><sub>13s</sub>/<var>T</var><sub>2</sub> = FPR<sup>(γ̄−1)/γ̄</sup></div>
+      <div class="eq"><span class="eqn">(6.2)</span><var>h</var><sub>13</sub> = <var>h</var><sub>2</sub> + [<var>h</var><sub>a</sub>(<var>T</var><sub>13s</sub>) − <var>h</var><sub>2</sub>]/η<sub>f</sub>&emsp;→&emsp;<var>T</var><sub>13</sub>,&emsp;<var>p</var><sub>13</sub> = FPR·<var>p</var><sub>2</sub></div>
+      <div class="eq"><span class="eqn">(6.3)</span>Fan work per kg of bypass air&emsp;<var>w</var><sub>f</sub> = <var>h</var><sub>13</sub> − <var>h</var><sub>2</sub>;&emsp;per kg of core air&emsp;<var>w</var><sub>F</sub> = BPR·<var>w</var><sub>f</sub>;&emsp;<var>P</var><sub>fan</sub> = <var>ṁ</var>·<var>w</var><sub>F</sub></div>
+      <div class="eq"><span class="eqn">(6.4)</span>Fan nozzle:&emsp;<var>φ</var><sub>a</sub>(<var>T</var><sub>19</sub>) = <var>φ</var><sub>a</sub>(<var>T</var><sub>13</sub>) − <var>R</var>·ln(<var>p</var><sub>13</sub>/<var>p</var><sub>0</sub>),&emsp;<var>V</var><sub>19</sub> = √[2·(<var>h</var><sub>13</sub> − <var>h</var><sub>19</sub>)]</div>
+      <p>Here <var>ṁ</var> is the core mass flow; the bypass flow is BPR·<var>ṁ</var>.</p>
     </details>
 
     <details>
-      <summary>7. Nozzle</summary>
-      <p>The gas expands back to outside pressure, turning its remaining pressure into speed.</p>
-      <div class="eq"><span class="eqn">(7.1)</span><var>φ</var><sub>g</sub>(<var>T</var><sub>9</sub>) = <var>φ</var><sub>g</sub>(<var>T</var><sub>5</sub>) − <var>R</var>·ln(<var>p</var><sub>5</sub>/<var>p</var><sub>0</sub>)&emsp;→&emsp;<var>T</var><sub>9</sub></div><div class="eq"><span class="eqn">(7.1′)</span>Same in familiar form:&emsp;<var>T</var><sub>9</sub>/<var>T</var><sub>5</sub> = (<var>p</var><sub>0</sub>/<var>p</var><sub>5</sub>)<sup>(γ̄−1)/γ̄</sup></div>
-      <div class="eq"><span class="eqn">(7.2)</span><var>h</var><sub>9</sub> = <var>h</var><sub>g</sub>(<var>T</var><sub>9</sub>,<var>f</var>)</div>
-      <div class="eq"><span class="eqn">(7.3)</span><var>V</var><sub>9</sub> = √[2·(<var>h</var><sub>5</sub> − <var>h</var><sub>9</sub>)]</div>
+      <summary>7. Turbine</summary>
+      <p>The turbine takes exactly the compressor work, plus the fan work if there is a fan, out of the core gas (1+<var>f</var> kg per kg of air). That fixes <var>T</var><sub>5</sub>. A real turbine needs a bigger pressure drop than a perfect one for the same work.</p>
+      <div class="eq"><span class="eqn">(7.1)</span><var>h</var><sub>4</sub> = <var>h</var><sub>g</sub>(<var>T</var><sub>4</sub>,<var>f</var>)</div>
+      <div class="eq"><span class="eqn">(7.2)</span><var>h</var><sub>5</sub> = <var>h</var><sub>4</sub> − (<var>w</var><sub>c</sub> + <var>w</var><sub>F</sub>)/(1+<var>f</var>)&emsp;→&emsp;<var>T</var><sub>5</sub></div>
+      <div class="eq"><span class="eqn">(7.3)</span><var>h</var><sub>5s</sub> = <var>h</var><sub>4</sub> − (<var>h</var><sub>4</sub> − <var>h</var><sub>5</sub>)/η<sub>t</sub>&emsp;→&emsp;<var>T</var><sub>5s</sub></div>
+      <div class="eq"><span class="eqn">(7.4)</span><var>p</var><sub>5</sub> = <var>p</var><sub>4</sub>·exp{[<var>φ</var><sub>g</sub>(<var>T</var><sub>5s</sub>) − <var>φ</var><sub>g</sub>(<var>T</var><sub>4</sub>)]/<var>R</var>}</div>
+      <div class="eq"><span class="eqn">(7.4′)</span>Same in familiar form:&emsp;<var>T</var><sub>5s</sub>/<var>T</var><sub>4</sub> = (<var>p</var><sub>5</sub>/<var>p</var><sub>4</sub>)<sup>(γ̄−1)/γ̄</sup>,&emsp;γ̄ over <var>T</var><sub>5s</sub>…<var>T</var><sub>4</sub> for products</div>
+      <p>A working cycle needs <var>p</var><sub>5</sub> &gt; <var>p</var><sub>0</sub>, otherwise nothing is left to drive the core jet. A large BPR or FPR can use it all up.</p>
     </details>
 
     <details>
-      <summary>8. Thrust, efficiencies and SFC</summary>
-      <div class="eq"><span class="eqn">(8.1)</span>Specific thrust&emsp;<var>F</var><sub>s</sub> = (1+<var>f</var>)·<var>V</var><sub>9</sub> − <var>V</var><sub>0</sub></div>
-      <div class="eq"><span class="eqn">(8.2)</span><var>F</var><sub>g</sub> = <var>ṁ</var>(1+<var>f</var>)<var>V</var><sub>9</sub>,&emsp;<var>D</var><sub>ram</sub> = <var>ṁ</var><var>V</var><sub>0</sub>,&emsp;<var>F</var><sub>n</sub> = <var>F</var><sub>g</sub> − <var>D</var><sub>ram</sub> = <var>ṁ</var><var>F</var><sub>s</sub></div>
-      <div class="eq"><span class="eqn">(8.3)</span>Jet power gain&emsp;Δ<var>KE</var> = [(1+<var>f</var>)·<var>V</var><sub>9</sub><sup>2</sup> − <var>V</var><sub>0</sub><sup>2</sup>]/2</div>
-      <div class="eq"><span class="eqn">(8.4)</span>η<sub>th</sub> = Δ<var>KE</var>/<var>Q</var></div>
-      <div class="eq"><span class="eqn">(8.5)</span>η<sub>p</sub> = <var>F</var><sub>s</sub><var>V</var><sub>0</sub>/Δ<var>KE</var>&emsp;(0 when <var>V</var><sub>0</sub> = 0)</div>
-      <div class="eq"><span class="eqn">(8.6)</span>η<sub>0</sub> = η<sub>th</sub>·η<sub>p</sub> = <var>F</var><sub>s</sub><var>V</var><sub>0</sub>/<var>Q</var></div>
-      <div class="eq"><span class="eqn">(8.7)</span>SFC = <var>f</var>/<var>F</var><sub>s</sub>&emsp;[kg/(N·s)];&emsp;×10<sup>6</sup> → g/(kN·s);&emsp;×3600·9.80665 → lb/(lbf·h)</div>
-      <p>With fuel mass neglected, (8.5) becomes the familiar 2<var>V</var><sub>0</sub>/(<var>V</var><sub>9</sub> + <var>V</var><sub>0</sub>).</p>
+      <summary>8. Core nozzle</summary>
+      <p>The core gas expands back to outside pressure, turning its remaining pressure into speed.</p>
+      <div class="eq"><span class="eqn">(8.1)</span><var>φ</var><sub>g</sub>(<var>T</var><sub>9</sub>) = <var>φ</var><sub>g</sub>(<var>T</var><sub>5</sub>) − <var>R</var>·ln(<var>p</var><sub>5</sub>/<var>p</var><sub>0</sub>)&emsp;→&emsp;<var>T</var><sub>9</sub></div>
+      <div class="eq"><span class="eqn">(8.1′)</span>Same in familiar form:&emsp;<var>T</var><sub>9</sub>/<var>T</var><sub>5</sub> = (<var>p</var><sub>0</sub>/<var>p</var><sub>5</sub>)<sup>(γ̄−1)/γ̄</sup></div>
+      <div class="eq"><span class="eqn">(8.2)</span><var>h</var><sub>9</sub> = <var>h</var><sub>g</sub>(<var>T</var><sub>9</sub>,<var>f</var>),&emsp;<var>V</var><sub>9</sub> = √[2·(<var>h</var><sub>5</sub> − <var>h</var><sub>9</sub>)]</div>
     </details>
 
     <details>
-      <summary>9. Power-flow diagram</summary>
-      <p>Each band is a power; widths are drawn to scale and percentages are of the fuel heat.</p>
-      <div class="eq"><span class="eqn">(9.1)</span>Fuel heat&emsp;<var>Q̇</var> = <var>ṁ</var>·<var>f</var>·LHV&emsp;(100 %)</div>
-      <div class="eq"><span class="eqn">(9.2)</span>Heat lost in exhaust&emsp;= <var>Q̇</var> − <var>ṁ</var>·Δ<var>KE</var></div>
-      <div class="eq"><span class="eqn">(9.3)</span>Jet power&emsp;= <var>ṁ</var>·Δ<var>KE</var></div>
-      <div class="eq"><span class="eqn">(9.4)</span>Thrust power&emsp;= <var>F</var><sub>n</sub>·<var>V</var><sub>0</sub></div>
-      <div class="eq"><span class="eqn">(9.5)</span>Kinetic energy left in jet&emsp;= <var>ṁ</var>·Δ<var>KE</var> − <var>F</var><sub>n</sub>·<var>V</var><sub>0</sub></div>
-      <div class="eq"><span class="eqn">(9.6)</span>Turbine → compressor loop&emsp;= <var>P</var><sub>c</sub> = <var>ṁ</var>·<var>w</var><sub>c</sub></div>
+      <summary>9. Thrust, efficiencies and SFC</summary>
+      <p>Values per kg of core air. Without a fan, BPR = 0 and every fan term disappears.</p>
+      <div class="eq"><span class="eqn">(9.1)</span><var>F</var><sub>s,core</sub> = (1+<var>f</var>)·<var>V</var><sub>9</sub> − <var>V</var><sub>0</sub>,&emsp;<var>F</var><sub>s,fan</sub> = BPR·(<var>V</var><sub>19</sub> − <var>V</var><sub>0</sub>),&emsp;<var>F</var><sub>s</sub> = <var>F</var><sub>s,core</sub> + <var>F</var><sub>s,fan</sub></div>
+      <div class="eq"><span class="eqn">(9.2)</span><var>F</var><sub>g</sub> = <var>ṁ</var>·[(1+<var>f</var>)<var>V</var><sub>9</sub> + BPR·<var>V</var><sub>19</sub>],&emsp;ram drag <var>D</var><sub>ram</sub> = <var>ṁ</var>·(1+BPR)·<var>V</var><sub>0</sub>,&emsp;<var>F</var><sub>n</sub> = <var>F</var><sub>g</sub> − <var>D</var><sub>ram</sub> = <var>ṁ</var>·<var>F</var><sub>s</sub></div>
+      <div class="eq"><span class="eqn">(9.3)</span>Specific thrust per kg of total air&emsp;= <var>F</var><sub>s</sub>/(1+BPR)</div>
+      <div class="eq"><span class="eqn">(9.4)</span>Δ<var>KE</var><sub>core</sub> = [(1+<var>f</var>)<var>V</var><sub>9</sub><sup>2</sup> − <var>V</var><sub>0</sub><sup>2</sup>]/2,&emsp;Δ<var>KE</var><sub>fan</sub> = BPR·(<var>V</var><sub>19</sub><sup>2</sup> − <var>V</var><sub>0</sub><sup>2</sup>)/2,&emsp;Δ<var>KE</var> = sum</div>
+      <div class="eq"><span class="eqn">(9.5)</span>η<sub>th</sub> = Δ<var>KE</var>/<var>Q</var></div>
+      <div class="eq"><span class="eqn">(9.6)</span>η<sub>p</sub> = <var>F</var><sub>s</sub><var>V</var><sub>0</sub>/Δ<var>KE</var>;&emsp;per stream: η<sub>p,core</sub> = <var>F</var><sub>s,core</sub><var>V</var><sub>0</sub>/Δ<var>KE</var><sub>core</sub>,&emsp;η<sub>p,fan</sub> = <var>F</var><sub>s,fan</sub><var>V</var><sub>0</sub>/Δ<var>KE</var><sub>fan</sub></div>
+      <div class="eq"><span class="eqn">(9.7)</span>η<sub>0</sub> = η<sub>th</sub>·η<sub>p</sub> = <var>F</var><sub>s</sub><var>V</var><sub>0</sub>/<var>Q</var></div>
+      <div class="eq"><span class="eqn">(9.8)</span>SFC = <var>f</var>/<var>F</var><sub>s</sub>&emsp;[kg/(N·s)];&emsp;×10<sup>6</sup> → g/(kN·s);&emsp;×3600·9.80665 → lb/(lbf·h)</div>
+      <p><b>Why the fan helps:</b> propulsive efficiency is 2<var>V</var><sub>0</sub>/(<var>V</var><sub>jet</sub> + <var>V</var><sub>0</sub>) when fuel mass is neglected. The fan spreads the jet power over much more air at a lower jet speed, so less kinetic energy is left behind and the same fuel gives more thrust. Fan and turbine losses lower thermal efficiency a little, but the propulsive gain is far larger.</p>
     </details>
 
     <details>
-      <summary>10. Drawing the T–s diagram and the sweep charts</summary>
-      <p>Station entropies come from (2.7), using air for stations 0, 2 and 3 and combustion products for 4, 5 and 9. Each process line is drawn with <var>n</var> = 40 points:</p>
-      <div class="eq"><span class="eqn">(10.1)</span><var>T</var><sub>i</sub> = <var>T</var><sub>a</sub>·(<var>T</var><sub>b</sub>/<var>T</var><sub>a</sub>)<sup>i/n</sup></div>
-      <div class="eq"><span class="eqn">(10.2)</span><var>s</var><sub>i</sub> = <var>s</var><sub>a</sub> + (<var>s</var><sub>b</sub> − <var>s</var><sub>a</sub>)·[<var>φ</var>(<var>T</var><sub>i</sub>) − <var>φ</var>(<var>T</var><sub>a</sub>)] / [<var>φ</var>(<var>T</var><sub>b</sub>) − <var>φ</var>(<var>T</var><sub>a</sub>)]</div>
+      <summary>10. Power-flow diagram</summary>
+      <p>Each band is a power; widths are to scale and percentages are of the fuel heat.</p>
+      <div class="eq"><span class="eqn">(10.1)</span>Fuel heat&emsp;<var>Q̇</var> = <var>ṁ</var>·<var>f</var>·LHV&emsp;(100 %)</div>
+      <div class="eq"><span class="eqn">(10.2)</span>Core jet power&emsp;= <var>ṁ</var>·Δ<var>KE</var><sub>core</sub>,&emsp;fan power&emsp;= <var>ṁ</var>·<var>w</var><sub>F</sub></div>
+      <div class="eq"><span class="eqn">(10.3)</span>Heat lost in core exhaust&emsp;= <var>Q̇</var> − <var>ṁ</var>·Δ<var>KE</var><sub>core</sub> − <var>ṁ</var>·<var>w</var><sub>F</sub></div>
+      <div class="eq"><span class="eqn">(10.4)</span>Fan jet power&emsp;= <var>ṁ</var>·Δ<var>KE</var><sub>fan</sub>,&emsp;fan losses&emsp;= <var>ṁ</var>·<var>w</var><sub>F</sub> − <var>ṁ</var>·Δ<var>KE</var><sub>fan</sub></div>
+      <div class="eq"><span class="eqn">(10.5)</span>Thrust power&emsp;= <var>F</var><sub>n</sub>·<var>V</var><sub>0</sub>,&emsp;kinetic energy left in jets&emsp;= <var>ṁ</var>·Δ<var>KE</var> − <var>F</var><sub>n</sub>·<var>V</var><sub>0</sub></div>
+      <div class="eq"><span class="eqn">(10.6)</span>Turbine → compressor loop&emsp;= <var>P</var><sub>c</sub> = <var>ṁ</var>·<var>w</var><sub>c</sub></div>
+    </details>
+
+    <details>
+      <summary>11. Drawing the T–s diagrams and the sweep charts</summary>
+      <p>Station entropies come from (2.7), using air for stations 0, 2, 3, 13 and 19 and combustion products for 4, 5 and 9. Each process line is drawn with <var>n</var> = 40 points:</p>
+      <div class="eq"><span class="eqn">(11.1)</span><var>T</var><sub>i</sub> = <var>T</var><sub>a</sub>·(<var>T</var><sub>b</sub>/<var>T</var><sub>a</sub>)<sup>i/n</sup></div>
+      <div class="eq"><span class="eqn">(11.2)</span><var>s</var><sub>i</sub> = <var>s</var><sub>a</sub> + (<var>s</var><sub>b</sub> − <var>s</var><sub>a</sub>)·[<var>φ</var>(<var>T</var><sub>i</sub>) − <var>φ</var>(<var>T</var><sub>a</sub>)] / [<var>φ</var>(<var>T</var><sub>b</sub>) − <var>φ</var>(<var>T</var><sub>a</sub>)]</div>
       <p>This is exact for perfect (vertical) steps, constant-pressure heating and cooling, and real compression or expansion at constant polytropic efficiency η<sub>pol</sub>, because then:</p>
-      <div class="eq"><span class="eqn">(10.3)</span><var>R</var>·d(ln <var>p</var>) = η<sub>pol</sub>·d<var>φ</var></div>
-      <p>Guide isobars use (2.7) at constant pressure, with air below <var>T</var><sub>3</sub>, a blend between <var>T</var><sub>3</sub> and <var>T</var><sub>4</sub>, and products above. The sweep charts repeat steps 1 to 8 for each point, changing only π<sub>c</sub> or <var>T</var><sub>4</sub>.</p>
+      <div class="eq"><span class="eqn">(11.3)</span><var>R</var>·d(ln <var>p</var>) = η<sub>pol</sub>·d<var>φ</var></div>
+      <p>Guide isobars use (2.7) at constant pressure, with air below <var>T</var><sub>3</sub>, a blend between <var>T</var><sub>3</sub> and <var>T</var><sub>4</sub>, and products above. The sweep charts repeat steps 1 to 9 for each point, changing only π<sub>c</sub> or <var>T</var><sub>4</sub>; with the fan on they keep your BPR and FPR.</p>
     </details>
 
     <details>
@@ -394,10 +441,13 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
         <tr><td><var>ṁ</var></td><td>Air mass flow [kg/s]</td></tr>
         <tr><td><var>f</var></td><td>Fuel–air ratio [kg fuel per kg air]</td></tr>
         <tr><td>π<sub>c</sub></td><td>Compressor pressure ratio</td></tr>
-        <tr><td>η<sub>c</sub>, η<sub>t</sub></td><td>Compressor and turbine isentropic efficiency</td></tr>
+        <tr><td>η<sub>c</sub>, η<sub>t</sub>, η<sub>f</sub></td><td>Compressor, turbine and fan isentropic efficiency</td></tr>
         <tr><td>γ, γ̄</td><td>Ratio of specific heats <var>c</var><sub>p</sub>/(<var>c</var><sub>p</sub> − <var>R</var>) at one temperature; γ̄ is its effective value over an isentropic step (2.13)</td></tr>
         <tr><td>Δ<var>p</var><sub>b</sub></td><td>Combustor pressure loss (fraction)</td></tr>
         <tr><td>LHV</td><td>Fuel lower heating value, 43.1 MJ/kg</td></tr>
+        <tr><td>BPR, FPR</td><td>Bypass ratio and fan pressure ratio</td></tr>
+        <tr><td><var>V</var><sub>19</sub></td><td>Fan (bypass) jet speed [m/s]</td></tr>
+        <tr><td><var>w</var><sub>f</sub>, <var>w</var><sub>F</sub></td><td>Fan work per kg of bypass air and per kg of core air [J/kg]</td></tr>
         <tr><td><var>Q</var></td><td>Heat added per kg of air [J/kg]</td></tr>
         <tr><td><var>w</var><sub>c</sub>, <var>P</var><sub>c</sub></td><td>Compressor work [J/kg] and power [W]</td></tr>
       </table>
@@ -416,7 +466,10 @@ const CONTROLS = [
   {id:"etac", label:"Compressor efficiency", unit:"", min:0.5, max:1, step:0.01, val:0.88, dec:2},
   {id:"dpb",  label:"Combustor pressure loss", unit:"%", min:0, max:15, step:0.5, val:4, dec:1},
   {id:"t4",   label:"Turbine inlet temperature T₄", unit:"K", min:800, max:2200, step:10, val:1500, dec:0},
-  {id:"etat", label:"Turbine efficiency", unit:"", min:0.5, max:1, step:0.01, val:0.90, dec:2}
+  {id:"etat", label:"Turbine efficiency", unit:"", min:0.5, max:1, step:0.01, val:0.90, dec:2},
+  {id:"bpr",  label:"Bypass ratio (BPR)", unit:"", min:0.1, max:15, step:0.1, val:5, dec:1, group:"fan"},
+  {id:"fpr",  label:"Fan pressure ratio (FPR)", unit:"", min:1.05, max:3, step:0.01, val:1.6, dec:2, group:"fan"},
+  {id:"etaf", label:"Fan efficiency", unit:"", min:0.5, max:1, step:0.01, val:0.90, dec:2, group:"fan"}
 ];
 // Entropy axis fixed to the widest possible range: the largest s any valid input set can reach is
 // about 2.75 kJ/(kg K) (T9 near 2200 K at ambient pressure, at 15 km), and no state lies below s0.
@@ -433,7 +486,7 @@ for (const c of CONTROLS) {
     <span class="num"><input type="number" id="n-${c.id}" min="${c.min}" max="${c.max}" step="any" value="${c.val}" inputmode="decimal"><span class="unit">${c.unit}</span></span></div>
     <input type="range" id="r-${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.val}" aria-label="${c.label}">
     <div class="hint" id="h-${c.id}"></div>`;
-  ctlBox.appendChild(d);
+  (c.group === "fan" ? document.getElementById("fanctl") : ctlBox).appendChild(d);
   const n = d.querySelector(`#n-${c.id}`), r = d.querySelector(`#r-${c.id}`);
   r.addEventListener("input", () => { n.value = String(+(+r.value).toFixed(c.dec)); schedule(); });
   n.addEventListener("input", () => {
@@ -452,7 +505,12 @@ const SMAX = {min:0.3, max:3, val:3};
   n.addEventListener("input", () => { const v = parseFloat(n.value); if (isFinite(v) && v >= SMAX.min && v <= SMAX.max) { r.value = v; schedule(); } });
   n.addEventListener("change", () => { let v = parseFloat(n.value); if (!isFinite(v)) v = SMAX.val; v = Math.min(SMAX.max, Math.max(SMAX.min, v)); n.value = v; r.value = v; schedule(); });
 }
-const IDEAL = {etac:1, etat:1, dpb:0};
+document.getElementById("fan").addEventListener("change", e => {
+  document.getElementById("fanctl").hidden = !e.target.checked;
+  document.getElementById("fanSec").hidden = !e.target.checked;
+  schedule();
+});
+const IDEAL = {etac:1, etat:1, dpb:0, etaf:1};
 let idealSaved = null;
 document.getElementById("ideal").addEventListener("click", e => {
   const btn = e.currentTarget, on = !idealSaved;
@@ -468,6 +526,14 @@ document.getElementById("ideal").addEventListener("click", e => {
   btn.setAttribute("aria-pressed", String(on));
   schedule();
 });
+const SMAXF = {min:0.01, max:0.25, val:0.05};
+{
+  const n = document.getElementById("n-smaxf"), r = document.getElementById("r-smaxf");
+  r.addEventListener("input", () => { n.value = String(+(+r.value).toFixed(3)); schedule(); });
+  n.addEventListener("input", () => { const v = parseFloat(n.value); if (isFinite(v) && v >= SMAXF.min && v <= SMAXF.max) { r.value = v; schedule(); } });
+  n.addEventListener("change", () => { let v = parseFloat(n.value); if (!isFinite(v)) v = SMAXF.val; v = Math.min(SMAXF.max, Math.max(SMAXF.min, v)); n.value = v; r.value = v; schedule(); });
+}
+function smaxfVal() { const v = parseFloat(document.getElementById("n-smaxf").value); return isFinite(v) ? Math.min(SMAXF.max, Math.max(SMAXF.min, v)) : SMAXF.val; }
 function smaxVal() { const v = parseFloat(document.getElementById("n-smax").value); return isFinite(v) ? Math.min(SMAX.max, Math.max(SMAX.min, v)) : SMAX.val; }
 function val(id) {
   const c = CONTROLS.find(x => x.id === id);
@@ -522,7 +588,7 @@ function isa(km) {
   if (h <= 11000) { const T = 288.15 - 0.0065 * h; return {T, p:101325 * Math.pow(T / 288.15, 5.25588)}; }
   const T = 216.65; return {T, p:22632.06 * Math.exp(-9.80665 * (h - 11000) / (287.05 * T))};
 }
-function cycle(alt, V0, pic, T4, etac, etat, dpb) {
+function cycle(alt, V0, pic, T4, etac, etat, dpb, bpr = 0, fpr = 1, etaf = etac) {
   const {T:T0, p:p0} = isa(alt);
   const cp0 = cpA(T0), g0 = cp0 / (cp0 - R), a0 = Math.sqrt(g0 * R * T0), M0 = V0 / a0;
   const sRef = phA(T0);
@@ -540,21 +606,38 @@ function cycle(alt, V0, pic, T4, etac, etat, dpb) {
   // combustor
   const p4 = p3 * (1 - dpb);
   const f = (hA(T4) - hA(T3)) / (LHV - hA(T4) - hB(T4));
-  // turbine drives compressor
+  // fan (bypass stream, per kg of bypass air), own isentropic efficiency etaf
+  let T13 = T2, T13s = T2, p13 = p2, T19 = T0, V19 = V0, wf = 0;
+  if (bpr > 0) {
+    T13s = TfromPhi(phA(T2) + R * Math.log(fpr), 0, T2 * Math.pow(fpr, 0.28));
+    const h13 = h2 + (hA(T13s) - h2) / etaf;
+    T13 = TfromH(h13, 0, T13s); p13 = p2 * fpr; wf = h13 - h2;
+    T19 = TfromPhi(phA(T13) - R * Math.log(p13 / p0), 0, T13 * 0.9);
+    V19 = Math.sqrt(Math.max(0, 2 * (h13 - hA(T19))));
+  }
+  const WF = bpr * wf;                       // fan work per kg of core air
+  const fanBase = {bpr, fpr, T13, T13s, p13, T19, V19, wf, WF};
+  // turbine drives compressor (and fan)
   const wc = h3 - h2, h4 = hG(T4, f);
-  const h5 = h4 - wc / (1 + f), h5s = h4 - wc / ((1 + f) * etat);
-  if (h5s <= hG(150, f)) return {...base, p4, f, ok:false, msg:"The turbine cannot supply the compressor work. Raise T₄ or the component efficiencies, or lower the pressure ratio."};
+  const h5 = h4 - (wc + WF) / (1 + f), h5s = h4 - (wc + WF) / ((1 + f) * etat);
+  const fanTxt = bpr > 0 ? " and the fan. Lower BPR or FPR, or raise T₄." : ". Raise T₄ or the component efficiencies, or lower the pressure ratio.";
+  if (h5s <= hG(150, f)) return {...base, ...fanBase, p4, f, ok:false, msg:"The turbine cannot supply the work for the compressor" + fanTxt};
   const T5 = TfromH(h5, f, T4 * 0.8), T5s = TfromH(h5s, f, T5);
   const p5 = p4 * Math.exp((phG(T5s, f) - phG(T4, f)) / R);
-  if (p5 <= p0) return {...base, p4, f, ok:false, msg:"Driving the compressor uses up all the pressure, leaving nothing for the nozzle. Raise T₄ or the component efficiencies, or lower the pressure ratio and combustor loss."};
+  if (p5 <= p0) return {...base, ...fanBase, p4, f, ok:false, msg:bpr > 0
+    ? "Driving the compressor and fan uses up all the pressure, leaving nothing for the core nozzle. Lower BPR or FPR, or raise T₄."
+    : "Driving the compressor uses up all the pressure, leaving nothing for the nozzle. Raise T₄ or the component efficiencies, or lower the pressure ratio and combustor loss."};
   // nozzle
   const T9 = TfromPhi(phG(T5, f) - R * Math.log(p5 / p0), f, T5 * 0.8);
   const V9 = Math.sqrt(Math.max(0, 2 * (h5 - hG(T9, f))));
-  // performance per kg of air
-  const Q = f * LHV, Fs = (1 + f) * V9 - V0, wnet = ((1 + f) * V9 * V9 - V0 * V0) / 2;
+  // performance per kg of core air
+  const Q = f * LHV;
+  const Fsc = (1 + f) * V9 - V0, Fsf = bpr * (V19 - V0), Fs = Fsc + Fsf;
+  const dKEc = ((1 + f) * V9 * V9 - V0 * V0) / 2, dKEf = bpr * (V19 * V19 - V0 * V0) / 2, wnet = dKEc + dKEf;
   const eth = wnet / Q, ep = V0 > 0 && wnet > 0 ? Fs * V0 / wnet : 0, eo = Fs * V0 / Q;
+  const epc = V0 > 0 && dKEc > 0 ? Fsc * V0 / dKEc : 0, epf = V0 > 0 && dKEf > 0 ? Fsf * V0 / dKEf : 0;
   const sfc = Fs > 0 ? f / Fs : NaN;
-  return {...base, ok:true, wc, p4, f, T5, T5s, p5, T9, V9, Q, Fs, wnet, eth, ep, eo, sfc, cp4:cpG(T4, f)};
+  return {...base, ...fanBase, ok:true, wc, p4, f, T5, T5s, p5, T9, V9, Q, Fsc, Fsf, Fs, dKEc, dKEf, wnet, eth, ep, epc, epf, eo, sfc, cp4:cpG(T4, f)};
 }
 
 /* ---------- plotting ---------- */
@@ -654,51 +737,199 @@ function path(cy, Ta, pa, Tb, pb, fa = 0, fb = fa, n = 40) {
 /* ---------- power-flow (Sankey) diagram ---------- */
 function drawSankey(svg, cy, mdot, V0) {
   const W = Math.max(320, Math.min(900, svg.parentElement.clientWidth - 2));
-  const H = Math.round(Math.max(320, Math.min(460, W * 0.62)));
+  const H = Math.round(Math.max(320, Math.min(480, W * 0.62)));
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  if (!cy.ok || cy.wnet <= 0 || cy.Fs < 0) {
-    svg.innerHTML = `<text class="note" x="${W / 2}" y="${H / 2}" text-anchor="middle">No working cycle with these inputs</text>`;
-    return;
-  }
-  const Q = cy.Q, Pc = cy.wc, Wj = cy.wnet, Hx = Q - Wj, Pt = Math.max(0, cy.Fs * V0), Pk = Wj - Pt;
-  const mw = x => { const v = mdot * x / 1e6; return (v < 10 ? v.toFixed(2) : v.toFixed(1)) + " MW"; };
-  const pc = x => (100 * x / Q).toFixed(1) + " %";
-  const topPad = 40, loopGap = 22, G = 30, botPad = 40, nodeW = 10, d = Math.max(26, W * 0.07);
-  const k = (H - topPad - loopGap - 2 * G - botPad) / (2 * Pc + Q);
-  const wPc = Pc * k, wQ = Q * k, wJ = Wj * k, wH = Hx * k, wT = Pt * k, wK = Pk * k;
+  const leg = document.getElementById("sankeyleg");
+  const bad = !cy.ok || cy.dKEc < 0 || cy.dKEf < 0 || cy.Fs < 0;
+  if (bad) { svg.innerHTML = `<text class="note" x="${W / 2}" y="${H / 2}" text-anchor="middle">No working cycle with these inputs</text>`; leg.innerHTML = ""; return; }
+  const TEAL = "#4FA3A5", GREEN = "#2E8B57";
+  const Q = cy.Q, Pc = cy.wc, CJ = cy.dKEc, WF = cy.WF, FJ = cy.dKEf, FH = Math.max(0, WF - FJ);
+  const CH = Math.max(0, Q - CJ - WF), JT = CJ + FJ, Pt = Math.max(0, cy.Fs * V0), Pk = Math.max(0, JT - Pt);
+  const fan = WF > 0;
+  const pcs = x => (100 * x / Q).toFixed(1) + " %";
+  const C = {
+    fuel:[`var(--hot)`, 0.85], loop:[`var(--warm)`, 0.6], cj:[`var(--cold)`, 0.8], fp:[TEAL, 0.85], fj:[TEAL, 0.55],
+    th:[GREEN, 0.9], ke:[`var(--cold)`, 0.3], fl:[TEAL, 0.28], ch:[`var(--muted)`, 0.35]
+  };
+  const topPad = 30, loopGap = 22, G = 26, botPad = 30, nodeW = 10, d = Math.max(26, W * 0.07);
+  const k = (H - topPad - loopGap - 3 * G - botPad) / (2 * Pc + Q);
+  const wPc = Pc * k, wQ = Q * k, wCJ = CJ * k, wF = WF * k, wFJ = FJ * k, wFH = FH * k, wCH = CH * k, wT = Pt * k, wK = Pk * k;
   const yC0 = topPad + wPc + loopGap, rho = (wPc + loopGap) / 2, loopExt = d + rho + wPc / 2;
-  const xB = Math.max(W * 0.22, loopExt + 40), x2 = xB + nodeW;
-  const xD = Math.max(W * 0.6, x2 + loopExt + 30), xE = W - 6;
-  const ribbon = (xa, ya, xb, yb, w, color, op) => {
+  const xB = Math.max(W * 0.18, loopExt + 30), x2 = xB + nodeW;
+  const xE = W - 4;
+  const tw0 = str => str.length * 6.6;
+  // keep room on the right for the thrust tag, which shares a line with the "Jets" tag
+  const xD = Math.min(Math.max(W * 0.6, x2 + loopExt + 120), xE - nodeW - tw0("Thrust 100.0 %") - 6);
+  const xF = Math.max(x2 + 20, Math.min(Math.max(x2 + loopExt + 10, (x2 + xD) / 2 - nodeW / 2), xD - nodeW - 30));
+  const ribbon = (xa, ya, xb, yb, w, c) => {
     if (w < 0.3) return "";
     const xm = (xa + xb) / 2;
-    return `<path d="M${xa},${ya} C${xm},${ya} ${xm},${yb} ${xb},${yb} L${xb},${yb + w} C${xm},${yb + w} ${xm},${ya + w} ${xa},${ya + w} Z" style="fill:${color};opacity:${op}"/>`;
+    return `<path d="M${xa},${ya} C${xm},${ya} ${xm},${yb} ${xb},${yb} L${xb},${yb + w} C${xm},${yb + w} ${xm},${ya + w} ${xa},${ya + w} Z" style="fill:${c[0]};opacity:${c[1]}"/>`;
   };
-  const label = (x, y, anchor, name, value) =>
-    `<text x="${x}" y="${y}" text-anchor="${anchor}"><tspan class="lbl" style="font-size:13px">${name}</tspan><tspan dx="6">${value}</tspan></text>`;
+  const tw = str => str.length * 6.6;                       // rough text width at 12 px
+  const tag = (x, y, anchor, name, value, fill) =>
+    `<text x="${x}" y="${y}" text-anchor="${anchor}" style="font-size:12px${fill ? ";fill:" + fill : ""}"><tspan style="font-weight:600${fill ? "" : ";fill:var(--ink)"}">${name}</tspan><tspan dx="4">${value}</tspan></text>`;
+  const inBand = (xa, xb, y, w, name, value) => (w >= 16 && xb - xa - 12 >= tw(name + " " + value)) ? tag(xa + 6, y + w / 2 + 4, "start", name, value, "#fff") : "";
   let s = "";
-  const yJ = yC0 + wPc;
-  s += ribbon(6, yJ, xB, yJ, wQ, "var(--hot)", 0.85);                                  // fuel heat
-  if (wPc > 0.5) {                                                                    // turbine → compressor loop
+  const yJ = yC0 + wPc, yFan = yJ + wCJ, yCH = yFan + wF;
+  const yKE = yJ + wT + G, yFH = yJ + wT + wK + 2 * G, yCHr = fan ? yFH + wFH + G : yJ + wT + wK + 2 * G;
+  s += ribbon(4, yJ, xB, yJ, wQ, C.fuel);
+  if (wPc > 0.5) {
     const y0 = yC0 + wPc / 2, yL = topPad + wPc / 2;
-    s += `<path d="M${x2},${y0} H${x2 + d} A${rho},${rho} 0 0 0 ${x2 + d},${yL} H${xB - d} A${rho},${rho} 0 0 0 ${xB - d},${y0} H${xB}" style="fill:none;stroke:var(--warm);stroke-width:${wPc};opacity:0.6"/>`;
+    s += `<path d="M${x2},${y0} H${x2 + d} A${rho},${rho} 0 0 0 ${x2 + d},${yL} H${xB - d} A${rho},${rho} 0 0 0 ${xB - d},${y0} H${xB}" style="fill:none;stroke:${C.loop[0]};stroke-width:${wPc};opacity:${C.loop[1]}"/>`;
     const ax = xB + nodeW / 2, a = Math.min(wPc * 0.35, 11);
     if (a > 3) s += `<path d="M${ax - a},${yL} L${ax + a * 0.6},${yL - a} L${ax + a * 0.6},${yL + a} Z" style="fill:var(--panel);opacity:0.9"/>`;
   }
-  s += ribbon(x2, yJ, xD, yJ, wJ, "var(--cold)", 0.8);                                 // jet power
-  s += ribbon(x2, yJ + wJ, xE, yJ + wJ + 2 * G, wH, "var(--muted)", 0.35);             // exhaust heat
-  s += ribbon(xD + nodeW, yJ, xE, yJ, wT, "var(--cold)", 0.95);                        // thrust power
-  s += ribbon(xD + nodeW, yJ + wT, xE, yJ + wT + G, wK, "var(--cold)", 0.35);          // KE left in jet
+  s += ribbon(x2, yJ, xD, yJ, wCJ, C.cj);
+  if (fan) { s += ribbon(x2, yFan, xF, yFan, wF, C.fp); s += ribbon(xF + nodeW, yFan, xD, yFan, wFJ, C.fj); }
+  s += ribbon(xD + nodeW, yJ, xE, yJ, wT, C.th);
+  s += ribbon(xD + nodeW, yJ + wT, xE, yKE, wK, C.ke);
+  if (fan) s += ribbon(xF + nodeW, yFan + wFJ, xE, yFH, wFH, C.fl);
+  s += ribbon(x2, yCH, xE, yCHr, wCH, C.ch);
   s += `<rect x="${xB}" y="${yC0}" width="${nodeW}" height="${wPc + wQ}" style="fill:var(--ink)"/>`;
-  s += `<rect x="${xD}" y="${yJ}" width="${nodeW}" height="${Math.max(wJ, 1)}" style="fill:var(--ink)"/>`;
-  s += `<text x="6" y="${yJ + wQ + 17}" class="lbl" style="font-size:13px">Fuel heat input</text><text x="6" y="${yJ + wQ + 32}">${mw(Q)} (100 %)</text>`;
-  if (wPc > 0.5) s += `<text x="${xB + nodeW / 2}" y="${topPad - 22}" text-anchor="middle" class="lbl" style="font-size:13px">Turbine drives compressor (circulates inside)</text><text x="${xB + nodeW / 2}" y="${topPad - 8}" text-anchor="middle">${mw(Pc)} (${pc(Pc)})</text>`;
-  if (wJ >= 20) s += `<text x="${(x2 + xD) / 2}" y="${yJ + wJ / 2 + 5}" text-anchor="middle" style="fill:#fff;font-size:13px"><tspan style="font-weight:600">Jet power</tspan><tspan dx="6">${mw(Wj)} (${pc(Wj)})</tspan></text>`;
-  else s += label(xD - 4, yJ + wJ + 16, "end", "Jet power", `${mw(Wj)} (${pc(Wj)})`);
-  s += label(xE, yJ - 7, "end", "Thrust power", `${mw(Pt)} (${pc(Pt)})`);
-  s += label(xE, yJ + wT + G - 7, "end", "Kinetic energy left in jet", `${mw(Pk)} (${pc(Pk)})`);
-  s += label(xE, yJ + wJ + 2 * G - 7, "end", "Heat lost in exhaust", `${mw(Hx)} (${pc(Hx)})`);
+  s += `<rect x="${xD}" y="${yJ}" width="${nodeW}" height="${Math.max(wCJ + wFJ, 1)}" style="fill:var(--ink)"/>`;
+  if (fan) s += `<rect x="${xF}" y="${yFan}" width="${nodeW}" height="${Math.max(wF, 1)}" style="fill:var(--ink)"/>`;
+  // short in-diagram tags (full names and values are in the table below)
+  s += tag(4, yJ + wQ + 16, "start", "Fuel", "100 %");
+  if (wPc > 0.5) s += tag(xB + nodeW / 2, topPad - 9, "middle", "Compressor loop", pcs(Pc));
+  s += inBand(x2, fan ? xF : xD, yJ, wCJ, fan ? "Core jet" : "Jet", pcs(CJ));
+  if (fan) {
+    s += inBand(x2, xF, yFan, wF, "Fan", pcs(WF));
+    s += inBand(xF + nodeW, xD, yFan, wFJ, "Fan jet", pcs(FJ));
+    if (xD - 4 - tw("Jets " + pcs(JT)) > x2 + loopExt + 4) s += tag(xD - 4, yJ - 6, "end", "Jets", pcs(JT));
+  }
+  s += tag(xE, yJ - 6, "end", "Thrust", pcs(Pt));
+  s += tag(xE, yKE - 6, "end", "Jet KE", pcs(Pk));
+  if (fan) s += tag(xE, yFH - 6, "end", "Fan loss", pcs(FH));
+  s += tag(xE, yCHr - 6, "end", "Exhaust heat", pcs(CH));
   svg.innerHTML = s;
+  // legend table
+  const MW = x => (mdot * x / 1e6).toFixed(2);
+  const items = [
+    ["fuel", "Fuel heat input", Q],
+    ["loop", "Turbine → compressor (circulates inside, not a loss)", Pc],
+    ["cj", fan ? "Core jet power" : "Jet power", CJ],
+    ...(fan ? [["fp", "Fan shaft power (from the core turbine)", WF], ["fj", "Fan jet power", FJ]] : []),
+    ["th", "Thrust power (useful output)", Pt],
+    ["ke", fan ? "Kinetic energy left in the jets" : "Kinetic energy left in the jet", Pk],
+    ...(fan ? [["fl", "Fan losses (warmer bypass air)", FH]] : []),
+    ["ch", fan ? "Heat lost in core exhaust" : "Heat lost in exhaust", CH]
+  ];
+  leg.innerHTML = `<tr><th></th><th>Flow</th><th style="text-align:right">MW</th><th style="text-align:right">% of fuel</th></tr>` +
+    items.map(([key, name, x]) => `<tr><td><span class="sw" style="background:${C[key][0]};opacity:${Math.max(C[key][1], 0.35)}"></span></td><td>${name}</td><td style="text-align:right">${MW(x)}</td><td style="text-align:right">${pcs(x).replace(" %", "")}</td></tr>`).join("");
+}
+
+/* ---------- fan T–s diagram ---------- */
+function drawFanTs(cy) {
+  const svg = document.getElementById("tsfan");
+  if (!cy.ok) {
+    drawPlot(svg, {xmin:-0.12 * smaxfVal(), xmax:smaxfVal(), ymin:150, ymax:500, xlabel:"Entropy s − s₀ [kJ/(kg·K)]", ylabel:"Temperature T [K]", lines:[], note:"No working cycle with these inputs"});
+    document.getElementById("fanstates").innerHTML = ""; return;
+  }
+  const heatT = T => heat((T - cy.T0) / (cy.T4 - cy.T0));
+  const real = [...path(cy, cy.T0, cy.p0, cy.T2, cy.p2), ...path(cy, cy.T2, cy.p2, cy.T13, cy.p13), ...path(cy, cy.T13, cy.p13, cy.T19, cy.p0)];
+  const rej = path(cy, cy.T19, cy.p0, cy.T0, cy.p0);
+  const ideal = path(cy, cy.T2, cy.p2, cy.T13s, cy.p13, 0, 0, 2);
+  const s19 = cy.s(cy.T19, cy.p0) / 1000;
+  const xmax = smaxfVal(), xmin = -0.12 * xmax;
+  const ymin = 150, ymax = Math.max(500, niceCeil(cy.T13 * 1.12));
+  const iso = pp => { const pts = []; for (let i = 0; i <= 40; i++) { const T = ymin + 1 + (ymax - ymin) * i / 40; pts.push([cy.s(T, pp) / 1000, T]); } return pts; };
+  const pt = (T, pp) => cy.s(T, pp) / 1000;
+  drawPlot(svg, {
+    xmin, xmax, ymin, ymax, xlabel:"Entropy s − s₀ [kJ/(kg·K)]", ylabel:"Temperature T [K]",
+    lines:[
+      {pts:iso(cy.p0), color:"var(--line)", width:1},
+      {pts:iso(cy.p13), color:"var(--line)", width:1},
+      {pts:rej, color:"var(--muted)", width:1.5, dash:"5 5"},
+      {pts:ideal, color:"var(--muted)", width:1.5, dash:"4 4"},
+      {pts:real, colorFn:heatT, width:3.2}
+    ],
+    markers:[
+      ...(cy.T13 - cy.T13s > 0.5 ? [{x:pt(cy.T13s, cy.p13), y:cy.T13s, hollow:true, r:3, color:"var(--muted)", label:"13s", dx:-8}] : []),
+      {x:pt(cy.T0, cy.p0), y:cy.T0, label:"0", dx:-9, dy:12},
+      {x:pt(cy.T2, cy.p2), y:cy.T2, label:"2", dx:-9},
+      {x:pt(cy.T13, cy.p13), y:cy.T13, label:"13", dx:9},
+      {x:pt(cy.T19, cy.p0), y:cy.T19, label:"19", dx:9}
+    ]
+  });
+  const gLoc = T => { const c = cpA(T); return c / (c - R); };
+  const gBar = (Ta, Tb) => { if (Math.abs(Math.log(Tb / Ta)) < 1e-6) return gLoc(Ta); const c = (phA(Tb) - phA(Ta)) / Math.log(Tb / Ta); return c / (c - R); };
+  const rows = [
+    ["0", "Ambient", cy.T0, cy.p0, null],
+    ["2", "Fan inlet (after ram)", cy.T2, cy.p2, gBar(cy.T0, cy.T2)],
+    ["13", "Fan exit", cy.T13, cy.p13, gBar(cy.T2, cy.T13s)],
+    ["19", "Fan nozzle exit", cy.T19, cy.p0, gBar(cy.T19, cy.T13)]
+  ];
+  const sv = r => { const x = cy.s(r[2], r[3]); return (Math.abs(x) < 0.5 ? 0 : x / 1000).toFixed(3); };
+  document.getElementById("fanstates").innerHTML = `<tr><th>Station</th><th>Location</th><th>T [K]</th><th>p [kPa]</th><th>cp [kJ/(kg·K)]</th><th>γ</th><th>γ̄ step</th><th>s − s₀ [kJ/(kg·K)]</th></tr>` +
+    rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2].toFixed(1)}</td><td>${(r[3] / 1000).toFixed(1)}</td><td>${(cpA(r[2]) / 1000).toFixed(4)}</td><td>${gLoc(r[2]).toFixed(4)}</td><td>${r[4] === null ? "–" : r[4].toFixed(4)}</td><td>${sv(r)}</td></tr>`).join("") +
+    `<tr><td colspan="8" style="text-align:left;color:var(--muted)">Fan jet velocity V₁₉ = ${cy.V19.toFixed(1)} m/s, fan work ${(cy.wf / 1000).toFixed(1)} kJ per kg of bypass air</td></tr>`;
+}
+
+/* ---------- turbofan performance table ---------- */
+function perfTableFan(cy, cj, mdot, V0) {
+  const ok = cy.ok, D = "–";
+  const n = (x, dd) => x === null || x === undefined ? "" : (ok && isFinite(x) ? x.toFixed(dd) : D);
+  const mc = mdot, B = cy.bpr, mb = B * mdot, mt = mc + mb, f = cy.f || 0;
+  const Fgc = mc * (1 + f) * (cy.V9 || 0), Fgf = mb * (cy.V19 || 0), Drc = mc * V0, Drf = mb * V0;
+  const Fnc = Fgc - Drc, Fnf = Fgf - Drf, Fn = Fnc + Fnf;
+  const kN = x => x / 1000, MW = x => x / 1e6;
+  const groups = [
+    ["Thrust", [
+      ["Gross thrust", n(kN(Fgc + Fgf), 2), n(kN(Fgc), 2), n(kN(Fgf), 2), "kN"],
+      ["Inlet ram drag", n(kN(Drc + Drf), 2), n(kN(Drc), 2), n(kN(Drf), 2), "kN"],
+      ["Net thrust", n(kN(Fn), 2), n(kN(Fnc), 2), n(kN(Fnf), 2), "kN"],
+      ["Share of net thrust", "100", n(100 * Fnc / Fn, 1), n(100 * Fnf / Fn, 1), "%"],
+      ["Specific thrust (per kg/s of own air)", n(Fn / Math.max(mt, 1e-9), 1), n(cy.Fsc, 1), n(cy.V19 - V0, 1), "N·s/kg"]
+    ]],
+    ["Flow and fuel", [
+      ["Air mass flow", mt.toFixed(1), mc.toFixed(1), mb.toFixed(1), "kg/s"],
+      ["Bypass ratio / fan pressure ratio", `${B.toFixed(1)} / ${cy.fpr.toFixed(2)}`, "", "", ""],
+      ["Fuel–air ratio (core)", "", n(cy.f, 5), "", ""],
+      ["Fuel flow", n(mc * f, 3), n(mc * f, 3), "", "kg/s"],
+      ["SFC", n(cy.sfc * 1e6, 2), "", "", "g/(kN·s)"],
+      ["SFC", n(cy.sfc * 3600 * 9.80665, 3), "", "", "lb/(lbf·h)"]
+    ]],
+    ["Velocities", [
+      ["Flight speed / Mach", `${V0.toFixed(0)} / ${cy.M0.toFixed(3)}`, "", "", "m/s / –"],
+      ["Jet velocity", "", n(cy.V9, 1), n(cy.V19, 1), "m/s"]
+    ]],
+    ["Energy", [
+      ["Fuel heat input", n(MW(mc * cy.Q), 2), n(MW(mc * cy.Q), 2), "", "MW"],
+      ["Jet power gain", n(MW(mc * cy.wnet), 2), n(MW(mc * cy.dKEc), 2), n(MW(mc * cy.dKEf), 2), "MW"],
+      ["Thrust power", n(MW(Fn * V0), 2), n(MW(Fnc * V0), 2), n(MW(Fnf * V0), 2), "MW"],
+      ["Compressor power", "", n(MW(mc * cy.wc), 2), "", "MW"],
+      ["Fan power", "", "", n(MW(mc * cy.WF), 2), "MW"],
+      ["Turbine power (compressor + fan)", "", n(MW(mc * (cy.wc + cy.WF)), 2), "", "MW"]
+    ]],
+    ["Efficiencies", [
+      ["Thermal", n(100 * cy.eth, 2), "", "", "%"],
+      ["Propulsive", n(100 * cy.ep, 2), n(100 * cy.epc, 2), n(100 * cy.epf, 2), "%"],
+      ["Overall", n(100 * cy.eo, 2), "", "", "%"]
+    ]]
+  ];
+  let cmp = "";
+  if (cj) {
+    const okj = cj.ok && ok;
+    const v = (x, dd) => okj && isFinite(x) ? x.toFixed(dd) : D;
+    const rel = (a, b) => okj && isFinite(a) && isFinite(b) && b !== 0 ? `${a >= b ? "+" : ""}${(100 * (a / b - 1)).toFixed(1)} % with fan` : "";
+    const pp = (a, b) => okj && isFinite(a) && isFinite(b) ? `${a >= b ? "+" : ""}${(100 * (a - b)).toFixed(2)} points with fan` : "";
+    const Fnj = mc * (cj.Fs || 0);
+    const rows = [
+      ["Air mass flow", mc.toFixed(1), okj ? `${mt.toFixed(1)} kg/s with fan (${rel(mt, mc).replace(" with fan", "")})` : "", "kg/s"],
+      ["Specific thrust", v(cj.Fs, 1), rel(Fn / mt, cj.Fs), "N·s/kg"],
+      ["Net thrust", v(kN(Fnj), 2), rel(Fn, Fnj), "kN"],
+      ["SFC", v(cj.sfc * 1e6, 2), rel(cy.sfc, cj.sfc), "g/(kN·s)"],
+      ["Thermal efficiency", v(100 * cj.eth, 2), pp(cy.eth, cj.eth), "%"],
+      ["Propulsive efficiency", v(100 * cj.ep, 2), pp(cy.ep, cj.ep), "%"],
+      ["Overall efficiency", v(100 * cj.eo, 2), pp(cy.eo, cj.eo), "%"]
+    ];
+    cmp = `<tr class="grp"><td colspan="5">Same core without the fan (turbojet)</td></tr>` +
+      rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td colspan="2" class="chg">${r[2]}</td><td>${r[3]}</td></tr>`).join("");
+  }
+  return `<tr><th>Parameter</th><th class="r">Engine</th><th class="r">Core</th><th class="r">Fan</th><th>Unit</th></tr>` +
+    groups.map(([g, rows]) => `<tr class="grp"><td colspan="5">${g}</td></tr>` +
+      rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join("")).join("") + cmp;
 }
 
 /* ---------- render ---------- */
@@ -750,7 +981,17 @@ function render() {
   const mdot = val("mdot");
   const alt = val("alt"), V0 = val("v0"), pic = val("pic"), T4 = val("t4"),
         etac = val("etac"), etat = val("etat"), dpb = val("dpb") / 100;
-  const cy = cycle(alt, V0, pic, T4, etac, etat, dpb);
+  const fanOn = document.getElementById("fan").checked;
+  const bprU = fanOn ? val("bpr") : 0, fprU = fanOn ? val("fpr") : 1, etafU = fanOn ? val("etaf") : etac;
+  const cy = cycle(alt, V0, pic, T4, etac, etat, dpb, bprU, fprU, etafU);
+  const cj = fanOn ? cycle(alt, V0, pic, T4, etac, etat, dpb) : null;   // same core, no fan
+  document.querySelector('label[for="n-mdot"]').textContent = fanOn ? "Core mass flow" : "Inlet mass flow";
+  $("h-mdot").textContent = fanOn ? `Bypass flow ${(bprU * mdot).toFixed(0)} kg/s, total ${((1 + bprU) * mdot).toFixed(0)} kg/s` : "";
+  if (fanOn) {
+    $("h-bpr").textContent = cy.ok ? `Fan power ${(mdot * cy.WF / 1e6).toFixed(2)} MW` : "";
+    $("h-fpr").textContent = `p₁₃ = ${(cy.p13 / 1000).toFixed(0)} kPa`;
+    $("h-etaf").textContent = `T₁₃ = ${cy.T13.toFixed(0)} K, fan jet V₁₉ = ${cy.V19.toFixed(0)} m/s`;
+  }
 
   $("h-alt").textContent = `T₀ = ${cy.T0.toFixed(1)} K, p₀ = ${(cy.p0 / 1000).toFixed(1)} kPa`;
   $("h-v0").textContent = `Mach ${cy.M0.toFixed(2)}, ram pressure ratio ${(cy.p2 / cy.p0).toFixed(2)}`;
@@ -766,14 +1007,18 @@ function render() {
     $("r-eo").textContent = pct(cy.eo);
     $("r-sfc").textContent = isFinite(cy.sfc) ? (cy.sfc * 1e6).toFixed(1) : "–";
     $("r-sfc2").textContent = isFinite(cy.sfc) ? `g/(kN·s), ${(cy.sfc * 3600 * 9.80665).toFixed(3)} lb/(lbf·h)` : "no positive thrust";
-    $("r-fs").textContent = cy.Fs.toFixed(0);
+    $("r-fs").textContent = (cy.Fs / (1 + cy.bpr)).toFixed(0);
     $("r-fn").textContent = (mdot * cy.Fs / 1000).toFixed(1);
   } else {
     for (const k of ["r-eth", "r-ep", "r-eo", "r-sfc", "r-fs", "r-fn"]) $(k).textContent = "–";
     $("r-sfc2").textContent = "g/(kN·s)";
   }
-  $("perf").innerHTML = perfTable(cy, mdot, V0);
+  $("r-fs2").textContent = fanOn ? "N per kg/s of total air" : "N per kg/s of air";
+  $("r-fn2").textContent = fanOn && cy.ok ? `kN (core ${(mdot * cy.Fsc / 1000).toFixed(1)}, fan ${(mdot * cy.Fsf / 1000).toFixed(1)})` : "kN";
+  $("perf").innerHTML = fanOn ? perfTableFan(cy, cj, mdot, V0) : perfTable(cy, mdot, V0);
+  $("perf").className = fanOn ? "perf4" : "perf";
   drawSankey($("sankey"), cy, mdot, V0);
+  if (fanOn) drawFanTs(cy);
 
   /* atmosphere */
   const aT = [], aP = [];
@@ -873,7 +1118,7 @@ function render() {
   for (const S of sets) {
     S.w = []; S.e = [];
     for (const x of pis) {
-      const r = cycle(alt, V0, x, S.t, etac, etat, dpb);
+      const r = cycle(alt, V0, x, S.t, etac, etat, dpb, bprU, fprU, etafU);
       const w = r.ok && r.wnet > 0 ? r.wnet / 1000 : null;
       const e = r.ok && r.eth > 0 ? r.eth * 100 : null;
       S.w.push([x, w]); S.e.push([x, e]);
@@ -888,7 +1133,7 @@ function render() {
   const cur = key => cy.ok ? [{x:pic, y:key === "w" ? cy.wnet / 1000 : cy.eth * 100, r:5.5, color:"var(--ink)"}] : [];
   drawPlot($("work"), {
     xmin:1, xmax:70, ymin:0, ymax:niceCeil(wMax * 1.06 || 1),
-    xlabel:"Compressor pressure ratio", ylabel:"Specific work [kJ/kg]",
+    xlabel:"Compressor pressure ratio", ylabel:fanOn ? "Specific work [kJ/kg core air]" : "Specific work [kJ/kg]",
     lines:sets.map(S => ({pts:S.w, color:S.color, width:S.width, dash:S.dash})),
     markers:[...optima("w"), ...cur("w")]
   });
@@ -906,7 +1151,7 @@ function render() {
   let tMax = 0;
   for (const S of prSets) {
     S.e = t4s.map(x => {
-      const r = cycle(alt, V0, S.pr, x, etac, etat, dpb);
+      const r = cycle(alt, V0, S.pr, x, etac, etat, dpb, bprU, fprU, etafU);
       const e = r.ok && r.eth > 0 ? r.eth * 100 : null;
       if (e !== null) tMax = Math.max(tMax, e);
       return [x, e];
