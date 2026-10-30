@@ -30,8 +30,36 @@ html{ scroll-padding-top:env(safe-area-inset-top,0px); height:100%; }
 *,*::before,*::after{ box-sizing:inherit; }
 body{ margin:0; height:100%; overflow:hidden; background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.45; }
 
-.app{ display:grid; grid-template-columns:clamp(172px, 30vw, 300px) minmax(0,1fr); height:100%; }
-aside{ overflow-y:auto; background:var(--panel); border-right:1px solid var(--line); padding:0.9rem 0.9rem 1.2rem; }
+.app{ --zin:1; --zout:1; display:grid; grid-template-columns:calc(clamp(172px, 30vw, 300px) * var(--zin)) minmax(0,1fr); height:100%; transition:grid-template-columns 0.18s ease; }
+aside{ zoom:var(--zin); }
+#grid{ zoom:var(--zout); }
+.zoomctl{ display:inline-flex; align-items:center; gap:0.25rem; }
+.zoomctl .zval{ min-width:2.9rem; text-align:center; font:500 0.85rem var(--cond); font-variant-numeric:tabular-nums; color:var(--muted); cursor:pointer; background:none; border:0; padding:0.2rem 0; }
+.zoomctl .zval:hover{ color:var(--ink); }
+.zoomctl .tbtn{ width:1.9rem; padding:0.2rem 0; text-align:center; font-weight:600; }
+.zoomctl .tbtn:disabled{ opacity:0.4; cursor:default; }
+.side-zoom{ display:flex; align-items:center; justify-content:space-between; gap:0.4rem; margin:0.2rem 0 0.7rem; font-size:0.85rem; color:var(--muted); }
+.drag{ flex:none; display:grid; place-items:center; width:1.5rem; height:1.7rem; margin-left:auto; border:0; border-radius:5px; background:none; color:var(--muted); cursor:grab; touch-action:none; font-size:1rem; line-height:1; letter-spacing:-0.1em; }
+.drag:hover{ color:var(--ink); background:var(--paper); }
+.drag:active{ cursor:grabbing; }
+section.chart.dragging{ opacity:0.45; }
+section.chart.drop-before{ box-shadow:0 -5px 0 -1px var(--cold); }
+section.chart.drop-after{ box-shadow:0 5px 0 -1px var(--cold); }
+.grid.multi section.chart.drop-before{ box-shadow:-5px 0 0 -1px var(--cold); }
+.grid.multi section.chart.drop-after{ box-shadow:5px 0 0 -1px var(--cold); }
+body.dragging-sec, body.dragging-sec *{ cursor:grabbing !important; user-select:none; }
+.side-hide{ position:absolute; top:0.7rem; right:0.6rem; width:1.9rem; height:1.9rem; display:grid; place-items:center; font:600 1.05rem var(--sans); color:var(--muted); background:var(--paper); border:1px solid var(--line); border-radius:6px; cursor:pointer; }
+.side-hide:hover{ color:var(--ink); border-color:var(--cold); }
+.side-strip{ display:none; }
+.app.side-collapsed{ grid-template-columns:calc(2.7rem * var(--zin)) minmax(0,1fr); }
+.app.side-collapsed aside{ padding:0; overflow:hidden; }
+.app.side-collapsed aside > :not(.side-strip){ display:none !important; }
+.app.side-collapsed .side-strip{ display:flex; flex-direction:column; align-items:center; gap:0.7rem; width:100%; height:100%; padding:0.8rem 0; margin:0; background:var(--panel); border:0; color:var(--ink); cursor:pointer; }
+.side-strip:hover{ background:color-mix(in srgb, var(--cold) 8%, var(--panel)); }
+.side-strip .chev2{ display:grid; place-items:center; width:1.9rem; height:1.9rem; border-radius:6px; background:var(--cold); color:#fff; font:600 1.05rem var(--sans); }
+.side-strip .vt{ writing-mode:vertical-rl; transform:rotate(180deg); font:500 0.92rem var(--sans); white-space:nowrap; }
+.side-strip .vt.ac{ font:600 0.95rem var(--cond); color:var(--muted); }
+aside{ position:relative; overflow-y:auto; background:var(--panel); border-right:1px solid var(--line); padding:0.9rem 0.9rem 1.2rem; }
 main{ overflow-y:auto; padding:0.9rem clamp(0.6rem,2.5vw,1.6rem) 2rem; display:flex; flex-direction:column; gap:0.8rem; min-width:0; }
 h1{ font-family:var(--cond); font-weight:600; font-size:1.35rem; line-height:1.15; margin:0 0 0.2rem; }
 .fluid{ color:var(--muted); font-size:0.82rem; margin:0 0 0.9rem; padding-bottom:0.7rem; border-bottom:1px solid var(--grid); }
@@ -61,6 +89,10 @@ svg .frame{ fill:none; stroke:var(--line); }
 svg text{ font-family:var(--sans); fill:var(--muted); font-size:12px; }
 svg .axis{ fill:var(--ink); font-size:13px; font-weight:500; }
 svg .lbl{ fill:var(--ink); font:600 14px var(--cond); }
+svg .halo{ paint-order:stroke; stroke:var(--panel); stroke-width:3px; stroke-linejoin:round; }
+svg .stn{ fill:var(--ink); font:600 12px var(--sans); }
+svg .comp{ fill:var(--ink); font:500 12px var(--sans); }
+svg .val{ font-size:11px; font-variant-numeric:tabular-nums; }
 svg .note{ fill:var(--bad); font-size:14px; font-weight:500; }
 .idealbtn{ display:flex; align-items:center; justify-content:center; gap:0.5rem; width:100%; font:600 0.95rem var(--sans); color:var(--ink); background:var(--paper); border:1.5px solid var(--cold); border-radius:8px; padding:0.45rem 0.6rem; cursor:pointer; }
 .idealbtn .dot{ width:0.75rem; height:0.75rem; border-radius:50%; border:2px solid var(--cold); }
@@ -94,9 +126,9 @@ table.sleg td:first-child{ width:1.6rem; }
 .tbtn:hover{ border-color:var(--cold); }
 .seg .tbtn[aria-pressed="true"]{ background:var(--cold); border-color:var(--cold); color:#fff; }
 .grid{ display:grid; grid-template-columns:minmax(0,1fr); gap:1rem; align-items:start; }
-.grid.two{ grid-template-columns:repeat(2, minmax(0,1fr)); }
-section.chart h2{ margin:0; }
-.sec-toggle{ display:flex; align-items:center; gap:0.45rem; width:100%; padding:0; margin:0; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.grid.multi{ grid-template-columns:repeat(var(--cols, 2), minmax(0,1fr)); }
+section.chart h2{ margin:0; display:flex; align-items:center; gap:0.3rem; }
+.sec-toggle{ display:flex; align-items:center; gap:0.45rem; flex:1; min-width:0; padding:0; margin:0; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
 .chev{ display:inline-block; width:0.9rem; color:var(--muted); transition:transform 0.15s; }
 .chev::before{ content:"▾"; }
 section.chart.collapsed .chev{ transform:rotate(-90deg); }
@@ -161,11 +193,15 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
   <aside aria-label="Inputs">
+    <button type="button" class="side-strip" id="side-strip" aria-label="Expand for user inputs"><span class="chev2" aria-hidden="true">»</span><span class="vt">Expand for user inputs</span><span class="vt ac">Brayton cycle</span></button>
+    <button type="button" class="side-hide" id="side-hide" aria-label="Hide user inputs" title="Hide user inputs">«</button>
     <h1>Brayton cycle explorer</h1>
     <p class="fluid">Working fluid: air with temperature-dependent cp, then kerosene combustion products after the burner.</p>
     <button type="button" class="infobtn" id="info-open"><span aria-hidden="true">i</span>User guide</button>
+    <div class="side-zoom" role="group" aria-label="Zoom of the inputs"><span>Inputs zoom</span>
+      <span class="zoomctl"><button type="button" class="tbtn" data-zoom="in" data-step="-1" aria-label="Zoom inputs out">−</button><button type="button" class="zval" id="zval-in" data-zreset="in" title="Reset to 100 %">100 %</button><button type="button" class="tbtn" data-zoom="in" data-step="1" aria-label="Zoom inputs in">+</button></span></div>
     <button type="button" class="idealbtn" id="ideal" aria-pressed="false"><span class="dot" aria-hidden="true"></span>Ideal cycle</button>
     <p class="hint idealhint">Sets compressor, turbine and fan efficiency to 100 % and combustor pressure loss to 0. Press again to restore your values.</p>
     <div id="controls"></div>
@@ -189,12 +225,19 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <div class="tgroup">
         <button type="button" class="tbtn" id="expand-all">Expand all</button>
         <button type="button" class="tbtn" id="collapse-all">Collapse all</button>
+        <button type="button" class="tbtn" id="reset-order" title="Put the result sections back in their original order">Reset order</button>
+      </div>
+      <div class="tgroup" role="group" aria-label="Zoom of the results">
+        <span class="tlabel">Results zoom</span>
+        <span class="zoomctl"><button type="button" class="tbtn" data-zoom="out" data-step="-1" aria-label="Zoom results out">−</button><button type="button" class="zval" id="zval-out" data-zreset="out" title="Reset to 100 %">100 %</button><button type="button" class="tbtn" data-zoom="out" data-step="1" aria-label="Zoom results in">+</button></span>
       </div>
       <div class="tgroup seg" role="group" aria-label="Layout">
-        <span class="tlabel">Layout</span>
+        <span class="tlabel">Columns</span>
         <button type="button" class="tbtn" data-layout="auto">Auto</button>
-        <button type="button" class="tbtn" data-layout="1">1 column</button>
-        <button type="button" class="tbtn" data-layout="2">2 columns</button>
+        <button type="button" class="tbtn" data-layout="1" title="1 column">1</button>
+        <button type="button" class="tbtn" data-layout="2" title="2 columns">2</button>
+        <button type="button" class="tbtn" data-layout="3" title="3 columns">3</button>
+        <button type="button" class="tbtn" data-layout="4" title="4 columns">4</button>
       </div>
     </div>
     <div class="grid" id="grid">
@@ -202,6 +245,13 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
       <h2>Performance overview</h2>
       <div id="kpi" aria-live="polite"></div>
       <div class="kpileg"><span><i class="mk ideal"></i>Ideal cycle (same inputs, no losses)</span><span id="kpileg-nofan"><i class="mk nofan"></i>Same core without the fan</span></div>
+    </section>
+
+    <section class="chart" id="engineSec">
+      <h2>Engine cross-section</h2>
+      <p id="engine-desc"></p>
+      <svg class="plot" id="engine" role="img" aria-label="Simplified cross-section of the engine with numbered stations"></svg>
+      <div class="keybar"><span>Gas temperature</span><span id="ekey-lo">T₀</span><span class="bar"></span><span id="ekey-hi">T₄</span></div>
     </section>
 
     <section class="chart" id="tsSec">
@@ -295,7 +345,9 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
     <h3>How to use it</h3>
     <ul>
       <li>Drag a slider or type a number in its box. Every value and chart updates immediately.</li>
-      <li>Click a section title to fold it away; folded sections are not recalculated, so dragging stays smooth. <b>Expand all / Collapse all</b> and the <b>Layout</b> buttons (Auto, 1 or 2 columns) are at the top. Auto switches to two columns on wide screens. The page remembers your choices in this browser.</li>
+      <li>Click a section title to fold it away; folded sections are not recalculated, so dragging stays smooth. <b>Expand all / Collapse all</b> and the <b>Columns</b> buttons (Auto, 1, 2, 3 or 4) are at the top. Auto picks the number of columns from the width available: one on ordinary screens, two from about 1400 pixels, three from 2100 and four from 2800. With 3 or 4 columns the charts get narrow; the zoom controls can shrink the text to suit. The « button at the top of the input panel hides it to give the charts more room; the strip on the left brings it back.</li>
+      <li>Drag a section by its ⋮⋮ handle (right of the title) to move it; a blue bar shows where it will land. With the handle focused, Alt + arrow keys move it one place. <b>Reset order</b> restores the original order.</li>
+      <li><b>Results zoom</b> (top) and <b>Inputs zoom</b> (under the guide button) make text and charts smaller or larger, for example to fit more on a big screen; click the percentage to go back to 100 %. The page remembers all of these choices in this browser.</li>
       <li>The <b>performance overview</b> shows the main results as bars. The black tick marks the same engine with no losses (ideal cycle); with the fan on, a gold tick marks the same core without the fan.</li>
       <li>The <b>trade-off chart</b> plots overall efficiency against specific thrust. Low specific thrust means a big, slow jet (efficient but a large engine); high specific thrust means a small, fast jet. Your design is the black dot.</li>
       <li>Tick the <b>fan</b> box at the bottom of the inputs to turn the turbojet into a separate-flow turbofan, then set the bypass ratio, fan pressure ratio and fan efficiency. The mass-flow slider then sets the core flow. A fan T–s diagram appears, and the performance table splits into engine, core and fan columns, with a comparison against the same core without the fan.</li>
@@ -305,6 +357,7 @@ table.glossary td:first-child{ font-weight:600; white-space:nowrap; width:1%; }
     </ul>
 
     <h3>The numbered points (stations)</h3>
+    <p>The <b>engine cross-section</b> shows where each station sits. The gas path is colored by temperature (blue cold, red hot); the numbers under each station are its temperature, pressure and, where the flow leaves or enters, its velocity. Inside the engine these are total (stagnation) values; at 0, 9 and 19 they are static values. With the fan on, the picture changes to a separate-flow turbofan and the fan diameter grows with the bypass ratio. Proportions are schematic.</p>
     <table class="glossary">
       <tr><td>0</td><td>Still air ahead of the engine, at the chosen altitude</td></tr>
       <tr><td>2</td><td>Compressor entry. Forward speed has already slowed and slightly compressed the air (ram effect)</td></tr>
@@ -1003,6 +1056,12 @@ function initSections() {
     btn.type = "button"; btn.className = "sec-toggle";
     btn.innerHTML = `<span class="chev" aria-hidden="true"></span><span>${h.innerHTML}</span>`;
     h.innerHTML = ""; h.appendChild(btn);
+    const handle = document.createElement("button");
+    handle.type = "button"; handle.className = "drag"; handle.innerHTML = "⋮⋮";
+    handle.title = "Drag to move this section (or focus and press Alt + arrow keys)";
+    handle.setAttribute("aria-label", `Move section: ${btn.textContent.trim()}. Alt plus arrow keys move it.`);
+    h.appendChild(handle);
+    initDrag(sec, handle);
     sec._setCollapsed = c => {
       sec.classList.toggle("collapsed", c); btn.setAttribute("aria-expanded", String(!c));
       c ? collapsedSet.add(sec.id) : collapsedSet.delete(sec.id);
@@ -1013,15 +1072,268 @@ function initSections() {
   const all = c => { document.querySelectorAll("#grid > section.chart").forEach(sec => sec._setCollapsed(c)); store.set("be-collapsed", [...collapsedSet]); schedule(); };
   document.getElementById("expand-all").addEventListener("click", () => all(false));
   document.getElementById("collapse-all").addEventListener("click", () => all(true));
+  document.getElementById("reset-order").addEventListener("click", () => {
+    const grid = document.getElementById("grid"); for (const id of DEFAULT_ORDER) { const el = document.getElementById(id); if (el) grid.appendChild(el); }
+    store.set("be-order", null); schedule();
+  });
   document.querySelectorAll("[data-layout]").forEach(b => b.addEventListener("click", () => {
     layoutMode = b.dataset.layout; store.set("be-layout", layoutMode); schedule();
   }));
 }
+
+/* ---------- section reordering ---------- */
+const DEFAULT_ORDER = [...document.querySelectorAll("#grid > section.chart")].map(s => s.id);
+function applySavedOrder() {
+  const saved = store.get("be-order", null); if (!Array.isArray(saved)) return;
+  const grid = document.getElementById("grid"), ids = new Set(DEFAULT_ORDER);
+  const order = saved.filter(id => ids.has(id));
+  DEFAULT_ORDER.forEach((id, i) => { if (!order.includes(id)) { const prev = i ? order.indexOf(DEFAULT_ORDER[i - 1]) : -1; order.splice(prev + 1, 0, id); } });
+  for (const id of order) grid.appendChild(document.getElementById(id));
+}
+function saveOrder() { store.set("be-order", [...document.querySelectorAll("#grid > section.chart")].map(s => s.id)); }
+function initDrag(sec, handle) {
+  let drag = null;
+  const main = document.querySelector("main"), grid = document.getElementById("grid");
+  const clear = () => grid.querySelectorAll(".drop-before,.drop-after").forEach(el => el.classList.remove("drop-before", "drop-after"));
+  const targetAt = (x, y) => {
+    let best = null, bd = Infinity;
+    for (const el of grid.children) {
+      if (el === sec || el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0, dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0, d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = {el, r}; }
+    }
+    if (!best) return null;
+    const two = grid.classList.contains("multi"), r = best.r;
+    return {el: best.el, before: two ? x < r.left + r.width / 2 : y < r.top + r.height / 2};
+  };
+  const tick = () => {
+    if (!drag) return;
+    const r = main.getBoundingClientRect(), edge = 60;
+    if (drag.y < r.top + edge) main.scrollTop -= Math.ceil((r.top + edge - drag.y) / 4);
+    else if (drag.y > r.bottom - edge) main.scrollTop += Math.ceil((drag.y - (r.bottom - edge)) / 4);
+    const t = targetAt(drag.x, drag.y); clear();
+    if (t) t.el.classList.add(t.before ? "drop-before" : "drop-after");
+    drag.t = t; drag.raf = requestAnimationFrame(tick);
+  };
+  handle.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    handle.setPointerCapture(e.pointerId);
+    drag = {x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, moved: false, t: null};
+  });
+  handle.addEventListener("pointermove", e => {
+    if (!drag) return;
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (!drag.moved && Math.hypot(drag.x - drag.x0, drag.y - drag.y0) > 4) {
+      drag.moved = true; sec.classList.add("dragging"); document.body.classList.add("dragging-sec"); drag.raf = requestAnimationFrame(tick);
+    }
+  });
+  const end = commit => {
+    if (!drag) return;
+    cancelAnimationFrame(drag.raf);
+    if (commit && drag.moved && drag.t) { drag.t.el[drag.t.before ? "before" : "after"](sec); saveOrder(); schedule(); }
+    clear(); sec.classList.remove("dragging"); document.body.classList.remove("dragging-sec"); drag = null;
+  };
+  handle.addEventListener("pointerup", () => end(true));
+  handle.addEventListener("pointercancel", () => end(false));
+  handle.addEventListener("keydown", e => {
+    if (e.key === "Escape") { end(false); return; }
+    if (!e.altKey || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    e.preventDefault();
+    const up = e.key === "ArrowUp" || e.key === "ArrowLeft";
+    let sib = up ? sec.previousElementSibling : sec.nextElementSibling;
+    while (sib && sib.hidden) sib = up ? sib.previousElementSibling : sib.nextElementSibling;
+    if (!sib) return;
+    sib[up ? "before" : "after"](sec); saveOrder(); handle.focus(); sec.scrollIntoView({block: "nearest"}); schedule();
+  });
+}
+
+/* ---------- zoom and collapsible input panel ---------- */
+const ZOOMS = [0.5, 0.6, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.5];
+const zoom = {in: store.get("be-zoom-in", 1), out: store.get("be-zoom-out", 1)};
+function applyZoom() {
+  const app = document.getElementById("app");
+  for (const k of ["in", "out"]) { if (!ZOOMS.includes(zoom[k])) zoom[k] = 1; app.style.setProperty(k === "in" ? "--zin" : "--zout", zoom[k]); document.getElementById("zval-" + k).textContent = `${Math.round(zoom[k] * 100)} %`; }
+  document.querySelectorAll("[data-zoom]").forEach(b => { const i = ZOOMS.indexOf(zoom[b.dataset.zoom]), st = +b.dataset.step; b.disabled = i + st < 0 || i + st >= ZOOMS.length; });
+}
+function setZoom(k, v) { zoom[k] = v; store.set("be-zoom-" + k, v); applyZoom(); schedule(); setTimeout(schedule, 220); }
+document.querySelectorAll("[data-zoom]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.zoom, i = ZOOMS.indexOf(zoom[k]); setZoom(k, ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + +b.dataset.step))]); }));
+document.querySelectorAll("[data-zreset]").forEach(b => b.addEventListener("click", () => setZoom(b.dataset.zreset, 1)));
+applyZoom();
+function setSide(c, save = true) {
+  document.getElementById("app").classList.toggle("side-collapsed", c);
+  document.getElementById("side-hide").setAttribute("aria-expanded", String(!c)); document.getElementById("side-strip").setAttribute("aria-expanded", String(!c));
+  if (save) store.set("be-side", c);
+  schedule(); setTimeout(schedule, 220);
+}
+document.getElementById("side-hide").addEventListener("click", () => setSide(true));
+document.getElementById("side-strip").addEventListener("click", () => setSide(false));
 function applyLayout() {
   const grid = document.getElementById("grid");
-  const cols = layoutMode === "2" ? 2 : layoutMode === "1" ? 1 : (grid.clientWidth >= 1400 ? 2 : 1);
-  grid.classList.toggle("two", cols === 2);
+  const cols = ["1", "2", "3", "4"].includes(layoutMode) ? +layoutMode : Math.max(1, Math.min(4, Math.floor(grid.clientWidth / 700)));
+  grid.classList.toggle("multi", cols > 1);
+  grid.style.setProperty("--cols", cols);
   document.querySelectorAll("[data-layout]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.layout === layoutMode)));
+}
+
+
+/* ---------- engine cross-section ---------- */
+function drawEngine(svg, cy, fanOn, V0) {
+  const W = Math.max(320, Math.min(2400, svg.parentElement.clientWidth - 2));
+  const TEAL = "#4FA3A5";
+  const lin = tbl => x => {
+    if (x <= tbl[0][0]) return tbl[0][1];
+    for (let i = 1; i < tbl.length; i++) if (x <= tbl[i][0]) { const [a, ra] = tbl[i - 1], [b, rb] = tbl[i]; return ra + (rb - ra) * (x - a) / (b - a); }
+    return tbl[tbl.length - 1][1];
+  };
+  const nose = (xs, xe, R, rest) => x => x <= xs ? 0 : x < xe ? R * Math.sqrt(1 - ((xe - x) / (xe - xs)) ** 2) : rest(x);
+  // ---- geometry in engine units (x along the axis, r from the centre line) ----
+  const fan = fanOn && cy.bpr > 0;
+  const xc = fan ? 300 : 210;                 // compressor face
+  const rh0 = fan ? 40 : 32;                  // hub radius at compressor face
+  const core = [[0, 85], [220, 62], [250, 76], [350, 76], [380, 66], [480, 80], [660, 56]].map(([d, r]) => [xc + d, r]);
+  const hubTail = lin([[xc, rh0], [xc + 220, 48], [xc + 250, 42], [xc + 350, 42], [xc + 380, 46], [xc + 480, 44], [xc + 600, 0]]);
+  const x3 = xc + 220, x4 = xc + 380, x5 = xc + 480, x9 = xc + 660, x0 = 30;
+  let L, Rmax, Rin, lip, ro, rh, casing, G = {};
+  if (!fan) {
+    L = 1000; lip = 110; Rin = 90; Rmax = 106;
+    ro = lin([[lip, 90], [xc, 85], ...core]);
+    rh = nose(150, xc, rh0, hubTail);
+    casing = lin([[lip, 92], [130, 102], [170, 106], [x5, 106], [x9, 60]]);
+  } else {
+    const Ac = 85 * 85 - 40 * 40, rc = 101;
+    const Rf = Math.sqrt(rc * rc + 0.75 * cy.bpr * Ac);
+    const r19 = Math.sqrt(rc * rc + 0.62 * (Rf * Rf - rc * rc));
+    const xfn = 470;
+    L = 1080; lip = 90; Rin = 0.96 * Rf; Rmax = Rf + 20;
+    const Ni = lin([[lip, 0.96 * Rf], [150, Rf], [230, Rf], [xfn, r19]]);
+    const No = lin([[lip, 0.96 * Rf + 2], [110, Rf + 14], [200, Rf + 20], [xfn, r19 + 3]]);
+    const Bi = lin([[190, 97], [255, 97], [275, rc], [xfn, rc]]);
+    const cowl = lin([[255, 97], [275, rc], [x5, rc], [x9, 60]]);
+    const cin = lin([[190, 97], [255, 94], ...core]);
+    ro = x => x < 190 ? Ni(x) : cin(x);
+    rh = nose(125, 185, 40, x => x < 255 ? 40 : x < xc ? 40 : hubTail(x));
+    Object.assign(G, {Rf, r19, xfn, Ni, No, Bi, cowl});
+  }
+  // ---- pixel mapping ----
+  const narrow = W < 620;
+  const hasVals = cy.ok && !narrow;
+  const topRows = fan ? 2 : 1, valRows = hasVals ? (fan ? 6 : 3) : 0;
+  const topH = 6 + topRows * 16 + 26, botH = 10 + valRows * 14 + (hasVals && fan ? 6 : 0) + 4;
+  let sc = (W - 16) / L;
+  const maxH = Math.max(300, window.innerHeight * 0.6);
+  if (topH + 2 * Rmax * sc + botH > maxH) sc = Math.max(0.2, (maxH - topH - botH) / (2 * Rmax));
+  const ox = (W - L * sc) / 2, yc = topH + Rmax * sc, H = Math.round(yc + Rmax * sc + botH);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const X = x => ox + x * sc, Y = r => yc - r * sc;
+  const f1 = v => v.toFixed(1);
+  const samp = (a, b) => { const n = Math.max(2, Math.ceil((b - a) / 3)); return Array.from({length:n + 1}, (_, i) => a + (b - a) * i / n); };
+  const band = (top, bot, a, b) => { const xs = samp(a, b); return "M" + xs.map(x => `${f1(X(x))},${f1(Y(top(x)))}`).join("L") + "L" + xs.reverse().map(x => `${f1(X(x))},${f1(Y(bot(x)))}`).join("L") + "Z"; };
+  const zero = () => 0;
+  // ---- colours ----
+  const ok = cy.ok, hT = T => heat((T - cy.T0) / (cy.T4 - cy.T0));
+  const grad = (id, stops, op = 1) => `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f1(X(0))}" y1="0" x2="${f1(X(L))}" y2="0">` +
+    stops.map(([x, T, o]) => `<stop offset="${(x / L).toFixed(4)}" stop-color="${hT(T)}" stop-opacity="${o ?? op}"/>`).join("") + `</linearGradient>`;
+  let defs = `<marker id="eng-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10Z" fill="var(--muted)"/></marker>`;
+  const front = fan ? [[0, cy.T0], [160, cy.T2]] : [[0, cy.T0], [xc, cy.T2]];
+  if (ok) {
+    defs += grad("eng-core", [...front, [xc, cy.T2], [x3, cy.T3], [xc + 255, cy.T3], [xc + 355, cy.T4], [x4, cy.T4], [x5, cy.T5], [x9, cy.T9], [L, cy.T9]]);
+    defs += grad("eng-plume", [[x9, cy.T9, 0.6], [L, cy.T9, 0]]);
+    if (fan) {
+      defs += grad("eng-byp", [[0, cy.T0], [160, cy.T2], [188, cy.T2], [205, cy.T13], [245, cy.T13], [G.xfn, cy.T19], [L, cy.T19]]);
+      defs += grad("eng-fplume", [[G.xfn, cy.T19, 0.55], [G.xfn + 180, cy.T19, 0], [L, cy.T19, 0]]);
+    }
+  }
+  const gasFill = id => ok ? `url(#${id})` : "var(--grid)";
+  const METAL = `fill="var(--line)" fill-opacity="0.75" stroke="var(--muted)" stroke-width="1"`;
+  // ---- geometry (upper half, mirrored below) ----
+  let g = "";
+  // plumes
+  if (ok) {
+    g += `<path d="${band(lin([[x9, 56], [L, 66]]), zero, x9, L)}" fill="url(#eng-plume)"/>`;
+    if (fan) g += `<path d="${band(lin([[G.xfn, G.r19], [G.xfn + 180, G.cowl(G.xfn + 180) + 10]]), G.cowl, G.xfn, Math.min(G.xfn + 180, x9))}" fill="url(#eng-fplume)"/>`;
+  }
+  // gas path
+  g += `<path d="${band(ro, rh, lip, x9)}" fill="${gasFill("eng-core")}"/>`;
+  if (fan) g += `<path d="${band(G.Ni, G.Bi, 188, G.xfn)}" fill="${gasFill("eng-byp")}"/>`;
+  // metal: casing / nacelle / core cowl, hub
+  if (!fan) g += `<path d="${band(casing, ro, lip, x9)}" ${METAL}/>`;
+  else {
+    g += `<path d="${band(G.No, G.Ni, lip, G.xfn)}" ${METAL}/>`;
+    g += `<path d="${band(G.cowl, ro, 255, x9)}" ${METAL}/>`;
+    g += `<line x1="${f1(X(188))}" y1="${f1(Y(97))}" x2="${f1(X(255))}" y2="${f1(Y(97))}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>`;
+  }
+  const hubStart = fan ? 125 : 150, hubEnd = xc + 600;
+  g += `<path d="${band(rh, zero, hubStart, hubEnd)}" ${METAL}/>`;
+  // shaft
+  const shaftA = fan ? 180 : xc, sh = Math.max(2, 5 * sc);
+  g += `<rect x="${f1(X(shaftA))}" y="${f1(yc - sh)}" width="${f1(X(x5 - 20) - X(shaftA))}" height="${f1(sh)}" fill="var(--muted)" opacity="0.8"/>`;
+  // blades
+  const blade = (x, r1, r2, rotor) => `<line x1="${f1(X(x))}" y1="${f1(Y(r1 + 1))}" x2="${f1(X(x))}" y2="${f1(Y(r2 - 1))}" stroke="${rotor ? "var(--ink)" : "var(--muted)"}" stroke-width="${rotor ? 2 : 1.3}" stroke-linecap="round"/>`;
+  for (let i = 0; i < 16; i++) { const x = xc + 8 + i * 13.2; g += blade(x, rh(x), ro(x), i % 2 === 0); }
+  for (let i = 0; i < 4; i++) { const x = x4 + 12 + i * 24; g += blade(x, rh(x), ro(x), i % 2 === 1); }
+  if (fan) {
+    const xb = 185, rt = G.Rf - 2, h0 = rh(xb);
+    g += `<path d="M${f1(X(xb - 6))},${f1(Y(h0))}L${f1(X(xb + 6))},${f1(Y(h0))}L${f1(X(xb + 3))},${f1(Y(rt))}L${f1(X(xb - 3))},${f1(Y(rt))}Z" fill="var(--ink)" opacity="0.85"/>`;
+    g += blade(225, G.Bi(225), G.Ni(225), false);
+  }
+  // combustor liner, flame, injector
+  g += `<rect x="${f1(X(xc + 258))}" y="${f1(Y(70))}" width="${f1(104 * sc)}" height="${f1(22 * sc)}" rx="${f1(6 * sc)}" fill="none" stroke="var(--ink)" stroke-opacity="0.5" stroke-width="1"/>`;
+  g += `<line x1="${f1(X(xc + 238))}" y1="${f1(Y(84))}" x2="${f1(X(xc + 262))}" y2="${f1(Y(59))}" stroke="var(--ink)" stroke-width="1.6"/>`;
+  if (ok) g += `<ellipse cx="${f1(X(xc + 280))}" cy="${f1(Y(59))}" rx="${f1(16 * sc)}" ry="${f1(5 * sc)}" fill="var(--hot)" opacity="0.85"/>`;
+  // station planes
+  const SP = [];   // [num, x, r1, r2, bypass?]
+  SP.push(["0", x0, 0, Rin, false]);
+  SP.push(["2", fan ? 160 : xc, rh(fan ? 160 : xc), ro(fan ? 160 : xc), false]);
+  if (fan) { SP.push(["13", 245, G.Bi(245), G.Ni(245), true]); SP.push(["19", G.xfn, G.cowl(G.xfn), G.r19, true]); }
+  SP.push(["3", x3, rh(x3), ro(x3), false], ["4", x4, rh(x4), ro(x4), false], ["5", x5, rh(x5), ro(x5), false], ["9", x9, 0, 56, false]);
+  for (const [, x, r1, r2, byp] of SP) g += `<line x1="${f1(X(x))}" y1="${f1(Y(r1))}" x2="${f1(X(x))}" y2="${f1(Y(r2))}" stroke="${byp ? TEAL : "var(--ink)"}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+  // inflow arrows
+  const aA = x0 + 10, aB = lip - 22;
+  for (const fr of [0.3, 0.7]) g += `<line x1="${f1(X(aA))}" y1="${f1(Y(fr * Rin))}" x2="${f1(X(aB))}" y2="${f1(Y(fr * Rin))}" stroke="var(--muted)" stroke-width="1.3" marker-end="url(#eng-arr)"/>`;
+  let out = `<defs>${defs}</defs><g>${g}</g><g transform="translate(0 ${f1(2 * yc)}) scale(1 -1)">${g}</g>`;
+  // centre line
+  out += `<line x1="${f1(X(0))}" y1="${f1(yc)}" x2="${f1(X(L))}" y2="${f1(yc)}" stroke="var(--muted)" stroke-width="0.8" stroke-dasharray="14 4 2 4" opacity="0.7"/>`;
+  // ---- component labels ----
+  const short = {Intake:"Inl.", Compressor:"Comp.", Combustor:"Comb.", Turbine:"Turb.", Nozzle:"Noz.", Fan:"Fan", "Bypass duct and fan nozzle":"Bypass"};
+  const comps = fan
+    ? [["Intake", lip, 160, 0], ["Fan", 160, 245, 0], ["Compressor", xc, x3, 0], ["Combustor", x3, x4, 0], ["Turbine", x4, x5, 0], ["Nozzle", x5, x9, 0], ["Bypass duct and fan nozzle", 245, G.xfn, 1]]
+    : [["Intake", lip, xc, 0], ["Compressor", xc, x3, 0], ["Combustor", x3, x4, 0], ["Turbine", x4, x5, 0], ["Nozzle", x5, x9, 0]];
+  for (const [name, a, b, row] of comps) {
+    const y = 6 + 12 + row * 16, xa = X(a) + 2, xb = X(b) - 2, wpx = xb - xa;
+    const txt = name.length * 6.4 < wpx ? name : short[name].length * 6.4 < wpx ? short[name] : "";
+    const col = row ? TEAL : "var(--ink)";
+    out += `<path d="M${f1(xa)},${y + 4}v-4H${f1(xb)}v4" fill="none" stroke="${row ? TEAL : "var(--line)"}" stroke-width="1" transform="translate(0 2)"/>`;
+    if (txt) out += `<text class="comp halo" x="${f1((xa + xb) / 2)}" y="${y - 2}" text-anchor="middle" style="fill:${col}">${txt}</text>`;
+  }
+  // ---- station numbers and values ----
+  const yCirc = 6 + topRows * 16 + 13;
+  const kPa = p => { const v = p / 1000; return (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + " kPa"; };
+  const vals = ok ? {
+    "0":[cy.T0, cy.p0, V0], "2":[cy.T2, cy.p2], "3":[cy.T3, cy.p3], "4":[cy.T4, cy.p4], "5":[cy.T5, cy.p5], "9":[cy.T9, cy.p0, cy.V9],
+    "13":[cy.T13, cy.p13], "19":[cy.T19, cy.p0, cy.V19]
+  } : {};
+  const yv0 = yc + Rmax * sc + 16;
+  for (const [n, x, , r2, byp] of SP) {
+    const col = byp ? TEAL : "var(--ink)", cx = X(x);
+    out += `<line x1="${f1(cx)}" y1="${yCirc + 10}" x2="${f1(cx)}" y2="${f1(Y(r2))}" stroke="${col}" stroke-width="0.8" stroke-dasharray="1 3" opacity="0.6"/>`;
+    out += `<circle cx="${f1(cx)}" cy="${yCirc}" r="${n.length > 1 ? 11 : 9.5}" fill="var(--panel)" stroke="${col}" stroke-width="1.5"/>`;
+    out += `<text class="stn" x="${f1(cx)}" y="${yCirc + 4}" text-anchor="middle" style="fill:${col}">${n}</text>`;
+    if (hasVals && vals[n]) {
+      const [T, pp, V] = vals[n], y = yv0 + (byp ? 48 : 0);
+      const anchor = n === "0" ? "start" : n === "9" ? "middle" : "middle", tx = n === "0" ? Math.max(2, cx - 8) : cx;
+      const lines = [`${T.toFixed(0)} K`, kPa(pp)]; if (V !== undefined) lines.push(`${V.toFixed(0)} m/s`);
+      lines.forEach((t, i) => { out += `<text class="val" x="${f1(tx)}" y="${f1(y + i * 14)}" text-anchor="${anchor}" style="fill:${col}">${t}</text>`; });
+    }
+  }
+  if (!ok) out += `<text class="note" x="${W / 2}" y="${H - 8}" text-anchor="middle">No working cycle with these inputs</text>`;
+  svg.innerHTML = out;
+  document.getElementById("ekey-lo").textContent = `T₀ ${cy.T0.toFixed(0)} K`;
+  document.getElementById("ekey-hi").textContent = `T₄ ${cy.T4.toFixed(0)} K`;
+  document.getElementById("engine-desc").innerHTML = fan
+    ? `Separate-flow (unmixed) turbofan. The fan compresses all the inlet air (2→13); the bypass air (teal) leaves through its own nozzle (19), the core air goes through compressor, combustor and turbine to the core nozzle (9). In this model one turbine drives both compressor and fan; real turbofans usually have a separate low-pressure turbine and shaft for the fan. Fan diameter grows with the bypass ratio; proportions are schematic.`
+    : `Simplified single-shaft turbojet. Air is slowed in the intake (0→2), compressed (2→3), heated in the combustor (3→4), expanded in the turbine that drives the compressor (4→5) and accelerated in the nozzle (5→9). Values under each station: temperature, pressure and, at inlet and outlet, velocity. Proportions are schematic.`;
 }
 
 /* ---------- performance overview (bullet bars) ---------- */
@@ -1191,6 +1503,7 @@ function render() {
     $("perf").className = fanOn ? "perf4" : "perf";
   }
   if (isOpen("sankeySec")) drawSankey($("sankey"), cy, mdot, V0);
+  if (isOpen("engineSec")) drawEngine($("engine"), cy, fanOn, V0);
   if (fanOn && isOpen("fanSec")) drawFanTs(cy);
   if (isOpen("tradeSec")) drawTrade(cy, cj, {alt, V0, pic, T4, etac, etat, dpb, bprU, fprU, etafU, fanOn});
 
@@ -1353,10 +1666,12 @@ const dlg = $("info");
 $("info-open").addEventListener("click", () => dlg.showModal());
 $("info-close").addEventListener("click", () => dlg.close());
 dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+applySavedOrder();
 initSections();
 let pending = false;
 function schedule() { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; render(); }); }
 window.addEventListener("resize", schedule);
+setSide(store.get("be-side", false), false);
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", schedule);
 render();
 </script>
